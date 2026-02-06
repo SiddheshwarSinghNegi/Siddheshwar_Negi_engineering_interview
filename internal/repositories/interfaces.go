@@ -139,3 +139,38 @@ type BlacklistedTokenRepositoryInterface interface {
 	GetByJTI(jti string) (*models.BlacklistedToken, error)
 	DeleteExpired() (int64, error)
 }
+
+// NorthwindExternalAccountRepositoryInterface defines the contract for NorthWind external account operations
+type NorthwindExternalAccountRepositoryInterface interface {
+	Create(account *models.NorthwindExternalAccount) error
+	GetByID(id uuid.UUID) (*models.NorthwindExternalAccount, error)
+	GetByUserID(userID uuid.UUID, offset, limit int) ([]models.NorthwindExternalAccount, int64, error)
+	FindByAccountAndRouting(userID uuid.UUID, accountNumber, routingNumber string) (*models.NorthwindExternalAccount, error)
+	Update(account *models.NorthwindExternalAccount) error
+}
+
+// NorthwindTransferRepositoryInterface defines the contract for NorthWind transfer operations
+type NorthwindTransferRepositoryInterface interface {
+	Create(transfer *models.NorthwindTransfer) error
+	Update(transfer *models.NorthwindTransfer) error
+	GetByID(id uuid.UUID) (*models.NorthwindTransfer, error)
+	GetByNorthwindTransferID(nwID uuid.UUID) (*models.NorthwindTransfer, error)
+	GetByUserID(userID uuid.UUID, offset, limit int) ([]models.NorthwindTransfer, int64, error)
+	GetByUserIDWithFilters(userID uuid.UUID, status, direction, transferType string, offset, limit int) ([]models.NorthwindTransfer, int64, error)
+	GetPendingTransfers(limit int) ([]models.NorthwindTransfer, error)
+}
+
+// RegulatorNotificationRepositoryInterface defines the contract for regulator notification operations
+type RegulatorNotificationRepositoryInterface interface {
+	Create(notification *models.RegulatorNotification) error
+	Update(notification *models.RegulatorNotification) error
+	GetByID(id uuid.UUID) (*models.RegulatorNotification, error)
+	GetPendingNotifications(limit int) ([]models.RegulatorNotification, error)
+	ExistsForTransferAndStatus(transferID uuid.UUID, terminalStatus string) (bool, error)
+}
+
+// RegulatorNotificationAttemptRepositoryInterface defines the contract for notification attempt audit records
+type RegulatorNotificationAttemptRepositoryInterface interface {
+	Create(attempt *models.RegulatorNotificationAttempt) error
+	GetByNotificationID(notificationID uuid.UUID) ([]models.RegulatorNotificationAttempt, error)
+}

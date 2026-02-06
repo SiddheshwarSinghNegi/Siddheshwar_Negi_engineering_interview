@@ -1,0 +1,2 @@
+DROP TRIGGER IF EXISTS update_regulator_notifications_updated_at ON regulator_notifications;
+DROP TABLE IF EXISTS regulator_notifications;

@@ -62,6 +62,29 @@ const (
 	TransferInvalidAmount      ErrorCode = "TRANSFER_006"
 )
 
+// NorthWind external account error codes (NORTHWIND_ACCOUNT_*)
+const (
+	NorthwindAccountNotFound       ErrorCode = "NORTHWIND_ACCOUNT_001"
+	NorthwindAccountValidationFail ErrorCode = "NORTHWIND_ACCOUNT_002"
+	NorthwindAccountAlreadyExists  ErrorCode = "NORTHWIND_ACCOUNT_003"
+)
+
+// NorthWind transfer error codes (NORTHWIND_TRANSFER_*)
+const (
+	NorthwindTransferNotFound       ErrorCode = "NORTHWIND_TRANSFER_001"
+	NorthwindTransferValidationFail ErrorCode = "NORTHWIND_TRANSFER_002"
+	NorthwindTransferInitiateFail   ErrorCode = "NORTHWIND_TRANSFER_003"
+	NorthwindTransferInsufficientBal ErrorCode = "NORTHWIND_TRANSFER_004"
+	NorthwindTransferCancelFail     ErrorCode = "NORTHWIND_TRANSFER_005"
+	NorthwindTransferReverseFail    ErrorCode = "NORTHWIND_TRANSFER_006"
+)
+
+// NorthWind API error codes (NORTHWIND_API_*)
+const (
+	NorthwindAPIUnavailable ErrorCode = "NORTHWIND_API_001"
+	NorthwindAPIError       ErrorCode = "NORTHWIND_API_002"
+)
+
 // System error codes (SYSTEM_*)
 const (
 	SystemInternalError     ErrorCode = "SYSTEM_001"
@@ -120,6 +143,23 @@ var errorMessages = map[ErrorCode]string{
 	TransferNotFound:          "Transfer not found",
 	TransferInsufficientFunds: "Source account has insufficient balance for this transfer",
 	TransferInvalidAmount:     "Invalid transfer amount",
+
+	// NorthWind account errors
+	NorthwindAccountNotFound:       "External account not found",
+	NorthwindAccountValidationFail: "External account validation failed with NorthWind",
+	NorthwindAccountAlreadyExists:  "External account already registered",
+
+	// NorthWind transfer errors
+	NorthwindTransferNotFound:        "NorthWind transfer not found",
+	NorthwindTransferValidationFail:  "Transfer validation failed with NorthWind",
+	NorthwindTransferInitiateFail:    "Failed to initiate transfer with NorthWind",
+	NorthwindTransferInsufficientBal: "Insufficient balance in source account",
+	NorthwindTransferCancelFail:      "Failed to cancel transfer",
+	NorthwindTransferReverseFail:     "Failed to reverse transfer",
+
+	// NorthWind API errors
+	NorthwindAPIUnavailable: "NorthWind API is unavailable",
+	NorthwindAPIError:       "NorthWind API returned an error",
 
 	// System errors
 	SystemInternalError:     "An unexpected error occurred. Please contact support with trace ID",

@@ -24,6 +24,7 @@ A comprehensive, banking REST API built with Go, designed specifically for techn
 - [Testing](#testing)
 - [Deployment](#deployment)
 - [Project Structure](#project-structure)
+- [NorthWind Bank Integration](#northwind-bank-integration)
 - [License](#license)
 
 ---
@@ -1004,3 +1005,19 @@ Start with these files to understand the architecture:
 - **Database**: Migrations, transactions, optimistic locking
 - **Observability**: Structured logging, metrics, audit trails
 - **DevOps**: Dockerization, CI/CD ready, health checks
+
+---
+
+## NorthWind Bank Integration
+
+This project includes a NorthWind Bank integration module for external account management, fund transfers, and regulator compliance notifications.
+
+For full documentation, architecture details, API endpoints, compliance notes, and testing instructions, see **[NORTHWIND_README.md](NORTHWIND_README.md)**.
+
+### Key capabilities:
+- External account validation and registration via NorthWind API
+- Fund transfer initiation, monitoring, cancellation, and reversal
+- Regulator webhook notifications within 60 seconds of terminal transfer state
+- Exponential backoff retries with full audit trail in PostgreSQL
+- Background polling and retry workers with graceful shutdown
+- Postman collection for end-to-end testing (`postman/NorthWind-Integration.postman_collection.json`)

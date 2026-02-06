@@ -151,8 +151,21 @@ func GetHTTPStatus(code ErrorCode) int {
 		TransactionInsufficientFunds, TransactionDuplicate,
 		TransactionValidationFailed, TransactionInvalidType,
 		AccountInvalidNumber, CustomerNoResults,
-		TransferInsufficientFunds:
+		TransferInsufficientFunds,
+		NorthwindAccountValidationFail, NorthwindAccountAlreadyExists,
+		NorthwindTransferValidationFail, NorthwindTransferInsufficientBal:
 		return http.StatusUnprocessableEntity
+
+	// NorthWind specific errors
+	case NorthwindAccountNotFound, NorthwindTransferNotFound:
+		return http.StatusNotFound
+
+	case NorthwindTransferInitiateFail, NorthwindTransferCancelFail, NorthwindTransferReverseFail,
+		NorthwindAPIError:
+		return http.StatusBadGateway
+
+	case NorthwindAPIUnavailable:
+		return http.StatusServiceUnavailable
 
 	// 429 Too Many Requests - Rate limiting
 	case SystemRateLimitExceeded:

@@ -23,6 +23,7 @@ import (
 	"github.com/array/banking-api/internal/config"
 	"github.com/array/banking-api/internal/database"
 	"github.com/array/banking-api/internal/handlers"
+	"github.com/array/banking-api/internal/integrations/northwind"
 	"github.com/array/banking-api/internal/middleware"
 	"github.com/array/banking-api/internal/repositories"
 	"github.com/array/banking-api/internal/services"
@@ -122,6 +123,46 @@ func main() {
 
 	go processingService.StartProcessing(processingCtx)
 
+	// --- NorthWind integration setup ---
+	nwClient := northwind.NewClient(cfg.NorthWind.BaseURL, cfg.NorthWind.APIKey)
+
+	// NorthWind repositories
+	nwExternalAccountRepo := repositories.NewNorthwindExternalAccountRepository(db)
+	nwTransferRepo := repositories.NewNorthwindTransferRepository(db)
+	regulatorNotifRepo := repositories.NewRegulatorNotificationRepository(db)
+	regulatorAttemptRepo := repositories.NewRegulatorNotificationAttemptRepository(db)
+
+	// NorthWind services
+	nwAccountService := services.NewNorthwindAccountService(nwClient, nwExternalAccountRepo, slog.Default())
+	nwTransferService := services.NewNorthwindTransferService(nwClient, nwTransferRepo, slog.Default())
+
+	regulatorService := services.NewRegulatorService(
+		cfg.Regulator.WebhookURL,
+		cfg.Regulator.RetryInitialSeconds,
+		cfg.Regulator.RetryMaxSeconds,
+		regulatorNotifRepo,
+		regulatorAttemptRepo,
+		slog.Default(),
+	)
+
+	nwPollingService := services.NewNorthwindPollingService(
+		nwClient,
+		nwTransferRepo,
+		regulatorService,
+		time.Duration(cfg.NorthWind.PollIntervalSeconds)*time.Second,
+		slog.Default(),
+	)
+
+	// Start NorthWind polling worker
+	pollingCtx, cancelPolling := context.WithCancel(context.Background())
+	defer cancelPolling()
+	go nwPollingService.Start(pollingCtx)
+
+	// Start regulator retry worker
+	regCtx, cancelReg := context.WithCancel(context.Background())
+	defer cancelReg()
+	go regulatorService.StartRetryLoop(regCtx)
+
 	e := configureEcho()
 
 	authHandler := handlers.NewAuthHandler(authService)
@@ -134,6 +175,9 @@ func main() {
 	healthCheckHandler := handlers.NewHealthCheckHandler(db)
 	docsHandler := handlers.NewDocsHandler()
 
+	// NorthWind handler
+	northwindHandler := handlers.NewNorthwindHandler(nwClient, nwAccountService, nwTransferService)
+
 	api := e.Group("/api/v1")
 	tokenSvc := tokenService.(*services.TokenService)
 	addAuthEndpoints(api, tokenSvc, blacklistedTokenRepo, authHandler)
@@ -142,6 +186,7 @@ func main() {
 	addDevEndpoints(api, tokenSvc, blacklistedTokenRepo, devHandler)
 	addAdminEndpoints(api, tokenSvc, blacklistedTokenRepo, adminHandler, accountHandler)
 	addHealthCheckEndpoint(api, healthCheckHandler)
+	addNorthwindEndpoints(api, tokenSvc, blacklistedTokenRepo, northwindHandler)
 	addDocumentationEndpoints(e, docsHandler)
 
 	go func() {
@@ -153,6 +198,10 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
+
+	// Graceful shutdown: cancel background workers then shut down HTTP
+	cancelPolling()
+	cancelReg()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -267,6 +316,33 @@ func addCustomerEndpoints(api *echo.Group, tokenService *services.TokenService, 
 // addDocumentationEndpoints registers the health check endpoint
 func addHealthCheckEndpoint(api *echo.Group, healthCheckHandler *handlers.HealthCheckHandler) {
 	api.GET("/health", healthCheckHandler.HealthCheck)
+}
+
+// addNorthwindEndpoints registers NorthWind integration routes
+func addNorthwindEndpoints(api *echo.Group, tokenService *services.TokenService, blacklistedTokenRepo repositories.BlacklistedTokenRepositoryInterface, handler *handlers.NorthwindHandler) {
+	nw := api.Group("/northwind", middleware.RequireAuth(tokenService, blacklistedTokenRepo))
+
+	// Bank info & domains
+	nw.GET("/bank", handler.GetBankInfo)
+	nw.GET("/domains", handler.GetDomains)
+	nw.GET("/health", handler.NorthwindHealth)
+
+	// External accounts
+	nw.POST("/external-accounts/validate-and-register", handler.ValidateAndRegister)
+	nw.GET("/external-accounts", handler.ListRegisteredAccounts)
+	nw.GET("/external-accounts/accessible", handler.ListAccessibleAccounts)
+
+	// Transfers
+	nw.POST("/transfers", handler.CreateTransfer)
+	nw.GET("/transfers", handler.ListTransfers)
+	nw.GET("/transfers/:id", handler.GetTransfer)
+	nw.POST("/transfers/:id/cancel", handler.CancelTransfer)
+	nw.POST("/transfers/:id/reverse", handler.ReverseTransfer)
+
+	// Dev/admin only endpoints
+	if !cfg.IsProduction() {
+		nw.POST("/reset", handler.NorthwindReset)
+	}
 }
 
 // addDocumentationEndpoints registers API documentation routes

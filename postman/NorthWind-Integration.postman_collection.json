@@ -1,0 +1,402 @@
+{
+	"info": {
+		"name": "NorthWind Integration",
+		"description": "Postman collection for testing the NorthWind Bank integration endpoints.\n\n## Setup\n1. Register a user via POST /api/v1/auth/register\n2. Login via POST /api/v1/auth/login to get a JWT\n3. Set the `jwt_token` variable from the login response access_token\n4. Set `NORTHWIND_API_KEY` in your .env if not already configured\n\n## Flow\n1. Validate & register an external account\n2. Create a transfer\n3. Poll transfer status until COMPLETED or FAILED\n4. Check regulator notifications were sent (inspect DB or logs)\n\n## Simulating Regulator Downtime\nSet REGULATOR_WEBHOOK_URL to an unreachable endpoint (e.g., http://localhost:19999/webhook) and observe retry behavior in logs and the regulator_notification_attempts table.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080"
+		},
+		{
+			"key": "jwt_token",
+			"value": ""
+		}
+	],
+	"item": [
+		{
+			"name": "1. Auth",
+			"item": [
+				{
+					"name": "Register User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"northwind-test@example.com\",\n  \"password\": \"SecureP@ssw0rd123!\",\n  \"first_name\": \"NorthWind\",\n  \"last_name\": \"Tester\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "register"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    pm.test('Registration successful', function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData.data.id).to.not.be.undefined;",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"northwind-test@example.com\",\n  \"password\": \"SecureP@ssw0rd123!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "login"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set('jwt_token', jsonData.access_token);",
+									"    pm.test('Login successful, token saved', function () {",
+									"        pm.expect(jsonData.access_token).to.not.be.undefined;",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "2. NorthWind Info",
+			"item": [
+				{
+					"name": "Get Bank Info",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/northwind/bank",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "northwind", "bank"]
+						}
+					}
+				},
+				{
+					"name": "Get Domains",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/northwind/domains",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "northwind", "domains"]
+						}
+					}
+				},
+				{
+					"name": "NorthWind Health",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/northwind/health",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "northwind", "health"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "3. External Accounts",
+			"item": [
+				{
+					"name": "Validate & Register External Account",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"account_holder_name\": \"John Doe\",\n  \"account_number\": \"1234567890\",\n  \"routing_number\": \"021000089\",\n  \"institution_name\": \"Chase Bank\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/northwind/external-accounts/validate-and-register",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "northwind", "external-accounts", "validate-and-register"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    pm.test('Account registered', function () {",
+									"        var jsonData = pm.response.json();",
+									"        pm.expect(jsonData.data.account.validated).to.be.true;",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "List Registered External Accounts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/northwind/external-accounts?limit=20&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "northwind", "external-accounts"],
+							"query": [
+								{ "key": "limit", "value": "20" },
+								{ "key": "offset", "value": "0" }
+							]
+						}
+					}
+				},
+				{
+					"name": "List Accessible NorthWind Accounts",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/northwind/external-accounts/accessible",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "northwind", "external-accounts", "accessible"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "4. Transfers",
+			"item": [
+				{
+					"name": "Create Transfer (OUTBOUND)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"amount\": 100.00,\n  \"currency\": \"USD\",\n  \"description\": \"Test outbound transfer\",\n  \"direction\": \"OUTBOUND\",\n  \"transfer_type\": \"ACH\",\n  \"reference_number\": \"REF-001\",\n  \"source_account\": {\n    \"account_holder_name\": \"John Doe\",\n    \"account_number\": \"1234567890\",\n    \"routing_number\": \"021000089\"\n  },\n  \"destination_account\": {\n    \"account_holder_name\": \"Jane Smith\",\n    \"account_number\": \"9876543210\",\n    \"routing_number\": \"021000089\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/northwind/transfers",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "northwind", "transfers"]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set('transfer_id', jsonData.data.transfer.id);",
+									"    pm.collectionVariables.set('nw_transfer_id', jsonData.data.transfer.northwind_transfer_id);",
+									"    pm.test('Transfer initiated', function () {",
+									"        pm.expect(jsonData.data.transfer.status).to.be.oneOf(['PENDING', 'PROCESSING']);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					]
+				},
+				{
+					"name": "Get Transfer Status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/northwind/transfers/{{transfer_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "northwind", "transfers", "{{transfer_id}}"]
+						},
+						"description": "Poll this endpoint repeatedly until status is COMPLETED or FAILED. The polling service also checks NorthWind automatically every 10 seconds."
+					}
+				},
+				{
+					"name": "List Transfers",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/northwind/transfers?status=&direction=&transfer_type=&limit=20&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "northwind", "transfers"],
+							"query": [
+								{ "key": "status", "value": "" },
+								{ "key": "direction", "value": "" },
+								{ "key": "transfer_type", "value": "" },
+								{ "key": "limit", "value": "20" },
+								{ "key": "offset", "value": "0" }
+							]
+						}
+					}
+				},
+				{
+					"name": "Cancel Transfer",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Customer requested cancellation\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/northwind/transfers/{{transfer_id}}/cancel",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "northwind", "transfers", "{{transfer_id}}", "cancel"]
+						}
+					}
+				},
+				{
+					"name": "Reverse Transfer",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Duplicate transfer\",\n  \"description\": \"Reversing due to duplicate entry\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/northwind/transfers/{{transfer_id}}/reverse",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "northwind", "transfers", "{{transfer_id}}", "reverse"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "5. Dev/Reset",
+			"item": [
+				{
+					"name": "Reset NorthWind State (dev only)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{jwt_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/northwind/reset",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "northwind", "reset"]
+						},
+						"description": "Only available in development environment. Resets NorthWind sandbox state."
+					}
+				}
+			]
+		}
+	]
+}

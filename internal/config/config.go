@@ -16,10 +16,24 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
-	JWT      JWTConfig
-	Security SecurityConfig
+	Server    ServerConfig
+	Database  DatabaseConfig
+	JWT       JWTConfig
+	Security  SecurityConfig
+	NorthWind NorthWindConfig
+	Regulator RegulatorConfig
+}
+
+type NorthWindConfig struct {
+	BaseURL             string
+	APIKey              string
+	PollIntervalSeconds int
+}
+
+type RegulatorConfig struct {
+	WebhookURL          string
+	RetryInitialSeconds int
+	RetryMaxSeconds     int
 }
 
 type ServerConfig struct {
@@ -99,12 +113,34 @@ func Load() *Config {
 		},
 	}
 
+	config.NorthWind = NorthWindConfig{
+		BaseURL:             getEnv("NORTHWIND_BASE_URL", "https://northwind.dev.array.io"),
+		APIKey:              getEnv("NORTHWIND_API_KEY", ""),
+		PollIntervalSeconds: getIntEnv("NORTHWIND_POLL_INTERVAL_SECONDS", 10),
+	}
+
+	config.Regulator = RegulatorConfig{
+		WebhookURL:          getEnv("REGULATOR_WEBHOOK_URL", "http://regulator:9000/webhook"),
+		RetryInitialSeconds: getIntEnv("REGULATOR_RETRY_INITIAL_SECONDS", 2),
+		RetryMaxSeconds:     getIntEnv("REGULATOR_RETRY_MAX_SECONDS", 60),
+	}
+
 	config.Server.CORSAllowOrigins = config.loadCORSAllowOrigins()
 
 	var loadJWTKeysErr error
 	config.JWT.PrivateKey, config.JWT.PublicKey, loadJWTKeysErr = config.loadJWTKeys()
 	if loadJWTKeysErr != nil {
 		log.Fatal("Failed to load RSA keys:", loadJWTKeysErr)
+	}
+
+	// Fail fast on missing critical NorthWind config in non-test mode
+	if !config.IsTesting() {
+		if config.NorthWind.APIKey == "" {
+			log.Println("WARNING: NORTHWIND_API_KEY not set. NorthWind integration will not work.")
+		}
+		if config.Regulator.WebhookURL == "" {
+			log.Println("WARNING: REGULATOR_WEBHOOK_URL not set. Regulator notifications will not be delivered.")
+		}
 	}
 
 	return config
