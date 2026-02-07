@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
+	appErrors "github.com/array/banking-api/internal/errors"
 	"github.com/array/banking-api/internal/repositories"
 	"github.com/array/banking-api/internal/services"
 	"github.com/google/uuid"
@@ -57,28 +57,28 @@ func NewDevHandler(
 func (h *DevHandler) GenerateTestData(c echo.Context) error {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+		return SendError(c, appErrors.AuthMissingToken)
 	}
 
 	accountIDStr := c.Param("accountId")
 	accountID, err := uuid.Parse(accountIDStr)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid account ID")
+		return SendError(c, appErrors.ValidationGeneral, appErrors.WithDetails("Invalid account ID"))
 	}
 
 	account, err := h.accountRepo.GetByID(accountID)
 	if err != nil {
 		if err == repositories.ErrAccountNotFound {
-			return echo.NewHTTPError(http.StatusNotFound, "account not found")
+			return SendError(c, appErrors.AccountNotFound)
 		}
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to retrieve account")
+		return SendSystemError(c, err)
 	}
 
 	if account.UserID != userID {
-		return echo.NewHTTPError(http.StatusForbidden, "access denied")
+		return SendError(c, appErrors.AuthInsufficientPermission)
 	}
 
-	count := getIntQueryParam(c, "count", 100)
+	count := getIntParam(c, "count", 100)
 	if count < 1 {
 		count = 1
 	}
@@ -86,7 +86,7 @@ func (h *DevHandler) GenerateTestData(c echo.Context) error {
 		count = 1000
 	}
 
-	days := getIntQueryParam(c, "days", 30)
+	days := getIntParam(c, "days", 30)
 	if days < 1 {
 		days = 1
 	}
@@ -147,25 +147,25 @@ func (h *DevHandler) GenerateTestData(c echo.Context) error {
 func (h *DevHandler) ClearTestData(c echo.Context) error {
 	userID, err := getUserIDFromContext(c)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, "unauthorized")
+		return SendError(c, appErrors.AuthMissingToken)
 	}
 
 	accountIDStr := c.Param("accountId")
 	accountID, err := uuid.Parse(accountIDStr)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid account ID")
+		return SendError(c, appErrors.ValidationGeneral, appErrors.WithDetails("Invalid account ID"))
 	}
 
 	account, err := h.accountRepo.GetByID(accountID)
 	if err != nil {
 		if err == repositories.ErrAccountNotFound {
-			return echo.NewHTTPError(http.StatusNotFound, "account not found")
+			return SendError(c, appErrors.AccountNotFound)
 		}
-		return echo.NewHTTPError(http.StatusInternalServerError, "failed to retrieve account")
+		return SendSystemError(c, err)
 	}
 
 	if account.UserID != userID {
-		return echo.NewHTTPError(http.StatusForbidden, "access denied")
+		return SendError(c, appErrors.AuthInsufficientPermission)
 	}
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
@@ -173,19 +173,4 @@ func (h *DevHandler) ClearTestData(c echo.Context) error {
 		"account_id": accountID,
 		"note":       "implement TransactionRepository.DeleteByAccountID to enable this feature",
 	})
-}
-
-// Helper function to get integer query parameters
-func getIntQueryParam(c echo.Context, key string, defaultValue int) int {
-	valueStr := c.QueryParam(key)
-	if valueStr == "" {
-		return defaultValue
-	}
-
-	var value int
-	if _, err := fmt.Sscanf(valueStr, "%d", &value); err != nil {
-		return defaultValue
-	}
-
-	return value
 }

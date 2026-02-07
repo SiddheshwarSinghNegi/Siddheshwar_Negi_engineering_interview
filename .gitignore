@@ -5,6 +5,25 @@ banking-api
 tmp
 .DS_STORE
 api
+*.zip
+
+# Environment (keep .env.example, .env.production.example)
+.env.production
+
+# Test coverage
+coverage.out
+coverage.html
+
+# Delve debugger
+__debug_bin
+
+# Build output
+dist/
+build/
+vendor/
+
+# Logs
+*.log
 
 ### GoLand+all ###
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider

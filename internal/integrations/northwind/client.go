@@ -14,20 +14,37 @@ import (
 
 // Client is the NorthWind Bank API client
 type Client struct {
-	baseURL    string
-	apiKey     string
-	httpClient *http.Client
+	baseURL             string
+	apiKey              string
+	httpClient          *http.Client
+	maxRetries          int
+	retryInitialBackoff time.Duration
+}
+
+// ClientOption configures the NorthWind client
+type ClientOption func(*Client)
+
+// WithRetry enables retries with exponential backoff
+func WithRetry(maxRetries int, initialBackoffMs int) ClientOption {
+	return func(c *Client) {
+		c.maxRetries = maxRetries
+		c.retryInitialBackoff = time.Duration(initialBackoffMs) * time.Millisecond
+	}
 }
 
 // NewClient creates a new NorthWind API client
-func NewClient(baseURL, apiKey string) *Client {
-	return &Client{
+func NewClient(baseURL, apiKey string, opts ...ClientOption) *Client {
+	c := &Client{
 		baseURL: baseURL,
 		apiKey:  apiKey,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
 	}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
 }
 
 // APIError represents an error returned by the NorthWind API
@@ -50,7 +67,8 @@ func (e *APIError) Error() string {
 	return fmt.Sprintf("northwind api error (HTTP %d): %s", e.StatusCode, e.Body)
 }
 
-// doRequest executes an HTTP request to the NorthWind API
+// doRequest executes an HTTP request to the NorthWind API with optional retries.
+// Retries on network errors and 5xx responses; does not retry on 4xx.
 func (c *Client) doRequest(ctx context.Context, method, path string, body interface{}) ([]byte, int, error) {
 	fullURL := c.baseURL + path
 
@@ -63,45 +81,79 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body interf
 		reqBody = bytes.NewBuffer(jsonBody)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, fullURL, reqBody)
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to create request: %w", err)
-	}
+	var lastErr error
+	var lastStatus int
 
-	// Set authorization header
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-
-	// Propagate trace ID if available in context
-	if traceID, ok := ctx.Value(traceIDKey).(string); ok && traceID != "" {
-		req.Header.Set("X-Trace-ID", traceID)
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to execute request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, resp.StatusCode, fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	if resp.StatusCode >= 400 {
-		apiErr := &APIError{
-			StatusCode: resp.StatusCode,
-			Body:       string(respBody),
+	for attempt := 0; attempt <= c.maxRetries; attempt++ {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return nil, 0, ctx.Err()
+			case <-time.After(c.retryBackoff(attempt)):
+				// proceed to retry
+			}
 		}
-		var parsed APIErrorResponse
-		if json.Unmarshal(respBody, &parsed) == nil {
-			apiErr.Parsed = &parsed
+
+		req, err := http.NewRequestWithContext(ctx, method, fullURL, reqBody)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to create request: %w", err)
 		}
-		return nil, resp.StatusCode, apiErr
+
+		req.Header.Set("Authorization", "Bearer "+c.apiKey)
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Accept", "application/json")
+		if traceID, ok := ctx.Value(traceIDKey).(string); ok && traceID != "" {
+			req.Header.Set("X-Trace-ID", traceID)
+		}
+
+		resp, err := c.httpClient.Do(req)
+		if err != nil {
+			lastErr = fmt.Errorf("failed to execute request: %w", err)
+			continue
+		}
+
+		respBody, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			lastErr = fmt.Errorf("failed to read response body: %w", err)
+			lastStatus = resp.StatusCode
+			continue
+		}
+
+		if resp.StatusCode >= 400 {
+			apiErr := &APIError{StatusCode: resp.StatusCode, Body: string(respBody)}
+			var parsed APIErrorResponse
+			if json.Unmarshal(respBody, &parsed) == nil {
+				apiErr.Parsed = &parsed
+			}
+			// Do not retry 4xx
+			if resp.StatusCode < 500 {
+				return nil, resp.StatusCode, apiErr
+			}
+			lastErr = apiErr
+			lastStatus = resp.StatusCode
+			continue
+		}
+
+		return respBody, resp.StatusCode, nil
 	}
 
-	return respBody, resp.StatusCode, nil
+	if apiErr, ok := lastErr.(*APIError); ok {
+		return nil, lastStatus, apiErr
+	}
+	return nil, lastStatus, lastErr
+}
+
+func (c *Client) retryBackoff(attempt int) time.Duration {
+	if c.retryInitialBackoff <= 0 {
+		return 0
+	}
+	// Exponential: initial * 2^attempt
+	d := c.retryInitialBackoff * time.Duration(1<<uint(attempt-1))
+	if d > 10*time.Second {
+		return 10 * time.Second
+	}
+	return d
 }
 
 type contextKey string

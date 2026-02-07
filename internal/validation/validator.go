@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/labstack/echo/v4"
 )
 
 // Validator wraps the go-playground validator with custom rules and error formatting
@@ -28,6 +29,22 @@ func GetValidator() *Validator {
 		instance = NewValidator()
 	}
 	return instance
+}
+
+// EchoValidator returns an echo.Validator that uses our custom validation rules.
+// Use this to wire validation into Echo: e.Validator = validation.EchoValidator()
+func EchoValidator() echo.Validator {
+	return &echoValidator{validate: GetValidator().GetValidate()}
+}
+
+// echoValidator implements echo.Validator interface
+type echoValidator struct {
+	validate *validator.Validate
+}
+
+// Validate implements echo.Validator
+func (v *echoValidator) Validate(i interface{}) error {
+	return v.validate.Struct(i)
 }
 
 // NewValidator creates a new validator instance with custom rules and configuration

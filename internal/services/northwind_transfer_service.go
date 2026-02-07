@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"time"
 
 	"github.com/array/banking-api/internal/integrations/northwind"
 	"github.com/array/banking-api/internal/models"
@@ -72,25 +71,15 @@ type CreateTransferResponse struct {
 func (s *NorthwindTransferService) CreateTransfer(ctx context.Context, userID uuid.UUID, req CreateTransferRequest) (*CreateTransferResponse, error) {
 	// Build NorthWind transfer request
 	nwReq := northwind.TransferRequest{
-		Amount:          req.Amount,
-		Currency:        req.Currency,
-		Description:     req.Description,
-		Direction:       req.Direction,
-		TransferType:    req.TransferType,
-		ReferenceNumber: req.ReferenceNumber,
-		ScheduledDate:   req.ScheduledDate,
-		SourceAccount: northwind.AccountDetails{
-			AccountHolderName: req.SourceAccount.AccountHolderName,
-			AccountNumber:     req.SourceAccount.AccountNumber,
-			RoutingNumber:     req.SourceAccount.RoutingNumber,
-			InstitutionName:   req.SourceAccount.InstitutionName,
-		},
-		DestinationAccount: northwind.AccountDetails{
-			AccountHolderName: req.DestinationAccount.AccountHolderName,
-			AccountNumber:     req.DestinationAccount.AccountNumber,
-			RoutingNumber:     req.DestinationAccount.RoutingNumber,
-			InstitutionName:   req.DestinationAccount.InstitutionName,
-		},
+		Amount:             req.Amount,
+		Currency:           req.Currency,
+		Description:        req.Description,
+		Direction:          req.Direction,
+		TransferType:       req.TransferType,
+		ReferenceNumber:    req.ReferenceNumber,
+		ScheduledDate:      req.ScheduledDate,
+		SourceAccount:      toNWAccountDetails(req.SourceAccount),
+		DestinationAccount: toNWAccountDetails(req.DestinationAccount),
 	}
 
 	// Step 1: Validate transfer with NorthWind
@@ -140,7 +129,7 @@ func (s *NorthwindTransferService) CreateTransfer(ctx context.Context, userID uu
 		ReferenceNumber:              req.ReferenceNumber,
 		SourceAccountNumber:          req.SourceAccount.AccountNumber,
 		DestinationAccountNumber:     req.DestinationAccount.AccountNumber,
-		Status:                       mapNWStatus(nwResp.Status),
+		Status:                       northwind.MapStatus(nwResp.Status),
 	}
 
 	if req.Description != "" {
@@ -159,26 +148,15 @@ func (s *NorthwindTransferService) CreateTransfer(ctx context.Context, userID uu
 		transfer.DestinationAccountHolderName = &req.DestinationAccount.AccountHolderName
 	}
 
-	parseAndSetTime := func(s string) *time.Time {
-		if s == "" {
-			return nil
-		}
-		t, err := time.Parse(time.RFC3339, s)
-		if err != nil {
-			return nil
-		}
-		return &t
-	}
-
-	transfer.InitiatedDate = parseAndSetTime(nwResp.InitiatedDate)
-	transfer.ProcessingDate = parseAndSetTime(nwResp.ProcessingDate)
-	transfer.ExpectedCompletionDate = parseAndSetTime(nwResp.ExpectedCompletionDate)
-	transfer.CompletedDate = parseAndSetTime(nwResp.CompletedDate)
+	transfer.InitiatedDate = northwind.ParseRFC3339Optional(nwResp.InitiatedDate)
+	transfer.ProcessingDate = northwind.ParseRFC3339Optional(nwResp.ProcessingDate)
+	transfer.ExpectedCompletionDate = northwind.ParseRFC3339Optional(nwResp.ExpectedCompletionDate)
+	transfer.CompletedDate = northwind.ParseRFC3339Optional(nwResp.CompletedDate)
 
 	if nwResp.ScheduledDate != "" {
-		transfer.ScheduledDate = parseAndSetTime(nwResp.ScheduledDate)
+		transfer.ScheduledDate = northwind.ParseRFC3339Optional(nwResp.ScheduledDate)
 	} else if req.ScheduledDate != "" {
-		transfer.ScheduledDate = parseAndSetTime(req.ScheduledDate)
+		transfer.ScheduledDate = northwind.ParseRFC3339Optional(req.ScheduledDate)
 	}
 
 	if nwResp.Fee != nil {
@@ -243,7 +221,7 @@ func (s *NorthwindTransferService) CancelTransfer(ctx context.Context, userID uu
 		return nil, fmt.Errorf("failed to cancel transfer: %w", err)
 	}
 
-	transfer.Status = mapNWStatus(resp.Status)
+	transfer.Status = northwind.MapStatus(resp.Status)
 	if resp.ErrorCode != "" {
 		transfer.ErrorCode = &resp.ErrorCode
 	}
@@ -270,7 +248,7 @@ func (s *NorthwindTransferService) ReverseTransfer(ctx context.Context, userID u
 		return nil, fmt.Errorf("failed to reverse transfer: %w", err)
 	}
 
-	transfer.Status = mapNWStatus(resp.Status)
+	transfer.Status = northwind.MapStatus(resp.Status)
 	if resp.ErrorCode != "" {
 		transfer.ErrorCode = &resp.ErrorCode
 	}
@@ -285,20 +263,12 @@ func (s *NorthwindTransferService) ReverseTransfer(ctx context.Context, userID u
 	return transfer, nil
 }
 
-// mapNWStatus maps NorthWind API status strings to our local status constants
-func mapNWStatus(status string) string {
-	switch status {
-	case "COMPLETED", "completed":
-		return models.NWTransferStatusCompleted
-	case "FAILED", "failed":
-		return models.NWTransferStatusFailed
-	case "CANCELLED", "cancelled":
-		return models.NWTransferStatusCancelled
-	case "REVERSED", "reversed":
-		return models.NWTransferStatusReversed
-	case "PROCESSING", "processing":
-		return models.NWTransferStatusProcessing
-	default:
-		return models.NWTransferStatusPending
+func toNWAccountDetails(d CreateTransferAccountDetails) northwind.AccountDetails {
+	return northwind.AccountDetails{
+		AccountHolderName: d.AccountHolderName,
+		AccountNumber:     d.AccountNumber,
+		RoutingNumber:     d.RoutingNumber,
+		InstitutionName:   d.InstitutionName,
 	}
 }
+

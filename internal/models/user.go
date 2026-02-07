@@ -23,7 +23,7 @@ var (
 
 type User struct {
 	ID                  uuid.UUID  `gorm:"type:uuid;primary_key" json:"id"`
-	Email               string     `gorm:"type:varchar(255);uniqueIndex;not null" json:"email"`
+	Email               string     `gorm:"type:varchar(255);uniqueIndex:users_email_key;not null" json:"email"`
 	PasswordHash        string     `gorm:"type:varchar(255);not null" json:"-"`
 	FirstName           string     `gorm:"type:varchar(100);not null" json:"first_name"`
 	LastName            string     `gorm:"type:varchar(100);not null" json:"last_name"`

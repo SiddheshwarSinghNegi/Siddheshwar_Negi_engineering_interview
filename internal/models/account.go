@@ -52,7 +52,6 @@ type Account struct {
 	// Associations
 	User         User          `gorm:"foreignKey:UserID" json:"-"`
 	Transactions []Transaction `gorm:"foreignKey:AccountID" json:"-"`
-	AuditLogs    []AuditLog    `gorm:"foreignKey:ResourceID" json:"-"`
 }
 
 // BeforeCreate hook for Account

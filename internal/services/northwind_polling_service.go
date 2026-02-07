@@ -48,9 +48,14 @@ func (s *NorthwindPollingService) Start(ctx context.Context) {
 			s.logger.Info("NorthWind polling service stopping")
 			return
 		case <-ticker.C:
-			s.pollPendingTransfers(ctx)
+			s.PollOnce(ctx)
 		}
 	}
+}
+
+// PollOnce runs one transfer status poll cycle. Used by the unified worker scheduler.
+func (s *NorthwindPollingService) PollOnce(ctx context.Context) {
+	s.pollPendingTransfers(ctx)
 }
 
 func (s *NorthwindPollingService) pollPendingTransfers(ctx context.Context) {
@@ -86,7 +91,7 @@ func (s *NorthwindPollingService) checkTransferStatus(ctx context.Context, trans
 		return
 	}
 
-	newStatus := mapNWStatus(resp.Status)
+	newStatus := northwind.MapStatus(resp.Status)
 	if newStatus == transfer.Status {
 		return // No change
 	}
@@ -95,20 +100,9 @@ func (s *NorthwindPollingService) checkTransferStatus(ctx context.Context, trans
 	transfer.Status = newStatus
 
 	// Update optional fields from response
-	parseTime := func(val string) *time.Time {
-		if val == "" {
-			return nil
-		}
-		t, err := time.Parse(time.RFC3339, val)
-		if err != nil {
-			return nil
-		}
-		return &t
-	}
-
-	transfer.ProcessingDate = parseTime(resp.ProcessingDate)
-	transfer.CompletedDate = parseTime(resp.CompletedDate)
-	transfer.ExpectedCompletionDate = parseTime(resp.ExpectedCompletionDate)
+	transfer.ProcessingDate = northwind.ParseRFC3339Optional(resp.ProcessingDate)
+	transfer.CompletedDate = northwind.ParseRFC3339Optional(resp.CompletedDate)
+	transfer.ExpectedCompletionDate = northwind.ParseRFC3339Optional(resp.ExpectedCompletionDate)
 
 	if resp.ErrorCode != "" {
 		transfer.ErrorCode = &resp.ErrorCode

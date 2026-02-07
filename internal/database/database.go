@@ -50,12 +50,14 @@ func New(cfg *config.DatabaseConfig) (*DB, error) {
 }
 
 func (db *DB) AutoMigrate() error {
+	// Order matters: Account before AuditLog (no FK from AuditLog to Account),
+	// Transfer depends on Transaction, etc.
 	return db.DB.AutoMigrate(
 		&models.User{},
 		&models.RefreshToken{},
 		&models.BlacklistedToken{},
-		&models.AuditLog{},
 		&models.Account{},
+		&models.AuditLog{},
 		&models.Transaction{},
 		&models.Transfer{},
 		&models.ProcessingQueueItem{},

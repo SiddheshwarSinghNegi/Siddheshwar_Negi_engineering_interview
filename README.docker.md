@@ -74,23 +74,25 @@ The `.env.example` file contains all available configuration options. Key variab
 | `DB_USER` | Database username | `arraybank` | Yes |
 | `DB_PASSWORD` | Database password | `arraybank_dev_password` | Yes |
 | `DB_NAME` | Database name | `arraybank_dev` | Yes |
-| `DB_SSLMODE` | PostgreSQL SSL mode | `disable` | Yes |
+| `DB_SSL_MODE` | PostgreSQL SSL mode | `disable` | Yes |
 | `AUTO_MIGRATE` | Run migrations on startup | `true` | No |
 | `SEED_DATABASE` | Load seed data | `true` | No |
-| `JWT_SECRET` | JWT signing secret | `dev_jwt_secret_key...` | Yes |
-| `JWT_EXPIRATION` | JWT expiration (seconds) | `3600` | Yes |
+| `JWT_PRIVATE_KEY` | JWT RSA private key (base64) | (see .env.example) | Yes |
+| `JWT_PUBLIC_KEY` | JWT RSA public key (base64) | (see .env.example) | Yes |
 
 ### Production Environment Variables
 
-For production, use `.env.production.example` as a template:
+For production, copy `.env.example` to `.env.production` and update values:
 
 ```bash
-cp .env.production.example .env.production
+cp .env.example .env.production
 ```
 
 **Important**: Update these values for production:
+- `APP_ENV`: Set to `production`
+- `DB_*`: Use production database credentials; set `DB_SSL_MODE=require`
 - `DB_PASSWORD`: Use a strong, randomly generated password
-- `JWT_SECRET`: Use a long, random string (minimum 32 characters)
+- `JWT_PRIVATE_KEY` and `JWT_PUBLIC_KEY`: Use production RSA keypair
 - `CORS_ALLOWED_ORIGINS`: Set to your actual domain(s)
 - `SEED_DATABASE`: Must be `false` in production
 
@@ -162,7 +164,7 @@ docker compose logs --tail=100 api
 
 1. **Create production environment file**:
    ```bash
-   cp .env.production.example .env.production
+   cp .env.example .env.production
    # Edit .env.production with production values
    ```
 

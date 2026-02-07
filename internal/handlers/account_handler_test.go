@@ -11,7 +11,7 @@ import (
 	"github.com/array/banking-api/internal/models"
 	"github.com/array/banking-api/internal/services"
 	"github.com/array/banking-api/internal/services/service_mocks"
-	"github.com/go-playground/validator/v10"
+	"github.com/array/banking-api/internal/validation"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -41,7 +41,7 @@ func (s *AccountHandlerSuite) SetupTest() {
 	s.handler = NewAccountHandler(s.mockService, s.auditLogger, s.metricsCollector)
 
 	s.echo = echo.New()
-	s.echo.Validator = &CustomValidator{validator: validator.New()}
+	s.echo.Validator = validation.EchoValidator()
 
 	// Setup common test data
 	s.testUserID = uuid.New()

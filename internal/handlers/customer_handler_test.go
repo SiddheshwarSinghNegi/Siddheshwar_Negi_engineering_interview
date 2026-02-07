@@ -13,7 +13,7 @@ import (
 	"github.com/array/banking-api/internal/models"
 	"github.com/array/banking-api/internal/services"
 	"github.com/array/banking-api/internal/services/service_mocks"
-	"github.com/go-playground/validator/v10"
+	"github.com/array/banking-api/internal/validation"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -55,7 +55,7 @@ func TestCustomerHandlerSuite(t *testing.T) {
 // Test SearchCustomers - successful search with results
 func (s *CustomerHandlerTestSuite) TestSearchCustomers_SuccessfulSearchWithResults() {
 	e := echo.New()
-	e.Validator = &CustomValidator{validator: validator.New()}
+	e.Validator = validation.EchoValidator()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/customers/search?q=john@example.com&limit=10&offset=0", nil)
 	rec := httptest.NewRecorder()
@@ -112,7 +112,7 @@ func (s *CustomerHandlerTestSuite) TestSearchCustomers_SuccessfulSearchWithResul
 // Test SearchCustomers - missing query parameter
 func (s *CustomerHandlerTestSuite) TestSearchCustomers_MissingQueryParameter() {
 	e := echo.New()
-	e.Validator = &CustomValidator{validator: validator.New()}
+	e.Validator = validation.EchoValidator()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/customers/search?limit=10&offset=0", nil)
 	rec := httptest.NewRecorder()
@@ -134,7 +134,7 @@ func (s *CustomerHandlerTestSuite) TestSearchCustomers_MissingQueryParameter() {
 // Test SearchCustomers - invalid limit
 func (s *CustomerHandlerTestSuite) TestSearchCustomers_InvalidLimit() {
 	e := echo.New()
-	e.Validator = &CustomValidator{validator: validator.New()}
+	e.Validator = validation.EchoValidator()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/customers/search?q=test&limit=2000&offset=0", nil)
 	rec := httptest.NewRecorder()
@@ -156,7 +156,7 @@ func (s *CustomerHandlerTestSuite) TestSearchCustomers_InvalidLimit() {
 // Test SearchCustomers - service error
 func (s *CustomerHandlerTestSuite) TestSearchCustomers_ServiceError() {
 	e := echo.New()
-	e.Validator = &CustomValidator{validator: validator.New()}
+	e.Validator = validation.EchoValidator()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/customers/search?q=test@example.com&limit=10&offset=0", nil)
 	rec := httptest.NewRecorder()
@@ -374,21 +374,21 @@ func (s *CustomerHandlerTestSuite) TestCreateCustomer_Successful() {
 	adminID := uuid.New()
 	requestBody := `{
 		"email": "newcustomer@example.com",
-		"first_name": "Jane",
-		"last_name": "Smith",
-		"phone_number": "+14155552671",
-		"date_of_birth": "1990-01-15",
+		"firstName": "Jane",
+		"lastName": "Smith",
+		"phoneNumber": "+14155552671",
+		"dateOfBirth": "1990-01-15",
 		"address": "123 Main St",
 		"city": "San Francisco",
 		"state": "CA",
-		"zip_code": "94102",
+		"zipCode": "94102",
 		"ssn": "123456789",
-		"employment_status": "employed",
-		"annual_income": "75000"
+		"employmentStatus": "employed",
+		"annualIncome": "75000"
 	}`
 
 	e := echo.New()
-	e.Validator = &CustomValidator{validator: validator.New()}
+	e.Validator = validation.EchoValidator()
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/customers", strings.NewReader(requestBody))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -435,16 +435,16 @@ func (s *CustomerHandlerTestSuite) TestCreateCustomer_InvalidEmail() {
 	adminID := uuid.New()
 	requestBody := `{
 		"email": "invalid-email",
-		"first_name": "Jane",
-		"last_name": "Smith",
-		"date_of_birth": "1990-01-15",
+		"firstName": "Jane",
+		"lastName": "Smith",
+		"dateOfBirth": "1990-01-15",
 		"ssn": "123456789",
-		"employment_status": "employed",
-		"annual_income": "75000"
+		"employmentStatus": "employed",
+		"annualIncome": "75000"
 	}`
 
 	e := echo.New()
-	e.Validator = &CustomValidator{validator: validator.New()}
+	e.Validator = validation.EchoValidator()
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/customers", strings.NewReader(requestBody))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -470,7 +470,7 @@ func (s *CustomerHandlerTestSuite) TestCreateCustomer_MissingRequiredFields() {
 	requestBody := `{"email": "test@example.com"}`
 
 	e := echo.New()
-	e.Validator = &CustomValidator{validator: validator.New()}
+	e.Validator = validation.EchoValidator()
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/customers", strings.NewReader(requestBody))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -495,16 +495,16 @@ func (s *CustomerHandlerTestSuite) TestCreateCustomer_EmailAlreadyExists() {
 	adminID := uuid.New()
 	requestBody := `{
 		"email": "existing@example.com",
-		"first_name": "Jane",
-		"last_name": "Smith",
-		"date_of_birth": "1990-01-15",
+		"firstName": "Jane",
+		"lastName": "Smith",
+		"dateOfBirth": "1990-01-15",
 		"ssn": "123456789",
-		"employment_status": "employed",
-		"annual_income": "75000"
+		"employmentStatus": "employed",
+		"annualIncome": "75000"
 	}`
 
 	e := echo.New()
-	e.Validator = &CustomValidator{validator: validator.New()}
+	e.Validator = validation.EchoValidator()
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/customers", strings.NewReader(requestBody))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)

@@ -121,9 +121,14 @@ func (s *RegulatorService) StartRetryLoop(ctx context.Context) {
 			s.logger.Info("Regulator retry service stopping")
 			return
 		case <-ticker.C:
-			s.retryPendingNotifications(ctx)
+			s.RetryOnce(ctx)
 		}
 	}
+}
+
+// RetryOnce runs one retry cycle for pending notifications. Used by the unified worker scheduler.
+func (s *RegulatorService) RetryOnce(ctx context.Context) {
+	s.retryPendingNotifications(ctx)
 }
 
 func (s *RegulatorService) retryPendingNotifications(ctx context.Context) {
