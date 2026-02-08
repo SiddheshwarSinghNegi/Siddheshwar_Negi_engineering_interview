@@ -271,3 +271,4 @@ func toNWAccountDetails(d CreateTransferAccountDetails) northwind.AccountDetails
 		InstitutionName:   d.InstitutionName,
 	}
 }
+

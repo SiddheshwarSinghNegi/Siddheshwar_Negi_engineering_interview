@@ -20,6 +20,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/array/banking-api/internal/config"
 	"github.com/array/banking-api/internal/database"
 	"github.com/array/banking-api/internal/handlers"
@@ -29,7 +30,6 @@ import (
 	"github.com/array/banking-api/internal/services"
 	"github.com/array/banking-api/internal/validation"
 	"github.com/array/banking-api/internal/worker"
-	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 )
