@@ -87,7 +87,8 @@ func (s *TransactionEnhancedTestSuite) TestTransaction_CategoryAndMerchantFields
 		},
 	}
 
-	for _, tc := range testCases {
+	for i := range testCases {
+		tc := &testCases[i]
 		s.Run(tc.name, func() {
 			err := tc.transaction.Validate()
 			if tc.expectValid {

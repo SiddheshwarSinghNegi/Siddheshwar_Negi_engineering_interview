@@ -83,7 +83,8 @@ func TestUser_Validate(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := &tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.user.Validate()
 			if tt.wantErr {
@@ -98,7 +99,7 @@ func TestUser_Validate(t *testing.T) {
 
 func TestUser_IsLocked(t *testing.T) {
 	now := time.Now()
-	
+
 	tests := []struct {
 		name   string
 		user   User
@@ -120,7 +121,8 @@ func TestUser_IsLocked(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := &tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.locked, tt.user.IsLocked())
 		})
@@ -131,9 +133,9 @@ func TestUser_Lock(t *testing.T) {
 	user := User{
 		FailedLoginAttempts: 2,
 	}
-	
+
 	user.Lock()
-	
+
 	assert.NotNil(t, user.LockedAt)
 	assert.Equal(t, 3, user.FailedLoginAttempts)
 	assert.True(t, user.IsLocked())
@@ -143,11 +145,11 @@ func TestUser_Unlock(t *testing.T) {
 	now := time.Now()
 	user := User{
 		FailedLoginAttempts: 3,
-		LockedAt:           &now,
+		LockedAt:            &now,
 	}
-	
+
 	user.Unlock()
-	
+
 	assert.Nil(t, user.LockedAt)
 	assert.Equal(t, 0, user.FailedLoginAttempts)
 	assert.False(t, user.IsLocked())
@@ -157,15 +159,15 @@ func TestUser_IncrementFailedAttempts(t *testing.T) {
 	user := User{
 		FailedLoginAttempts: 0,
 	}
-	
+
 	user.IncrementFailedAttempts()
 	assert.Equal(t, 1, user.FailedLoginAttempts)
 	assert.False(t, user.IsLocked())
-	
+
 	user.IncrementFailedAttempts()
 	assert.Equal(t, 2, user.FailedLoginAttempts)
 	assert.False(t, user.IsLocked())
-	
+
 	user.IncrementFailedAttempts()
 	assert.Equal(t, 3, user.FailedLoginAttempts)
 	assert.True(t, user.IsLocked())
@@ -175,9 +177,9 @@ func TestUser_ResetFailedAttempts(t *testing.T) {
 	user := User{
 		FailedLoginAttempts: 3,
 	}
-	
+
 	user.ResetFailedAttempts()
-	
+
 	assert.Equal(t, 0, user.FailedLoginAttempts)
 }
 

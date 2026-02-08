@@ -23,12 +23,12 @@ func SecurityHeaders() echo.MiddlewareFunc {
 			if c.Path() == "/docs" {
 				c.Response().Header().Set("Content-Security-Policy",
 					"default-src 'self'; "+
-					"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; "+
-					"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "+
-					"font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net data:; "+
-					"img-src 'self' data: https: blob:; "+
-					"connect-src 'self'; "+
-					"worker-src 'self' blob:")
+						"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net; "+
+						"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "+
+						"font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net data:; "+
+						"img-src 'self' data: https: blob:; "+
+						"connect-src 'self'; "+
+						"worker-src 'self' blob:")
 			} else {
 				c.Response().Header().Set("Content-Security-Policy", "default-src 'self'")
 			}

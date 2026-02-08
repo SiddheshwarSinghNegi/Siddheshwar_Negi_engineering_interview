@@ -28,14 +28,14 @@ type AccountMetrics struct {
 
 // UserAggregateMetrics represents aggregate metrics across all user accounts
 type UserAggregateMetrics struct {
-	UserID                uuid.UUID          `json:"user_id"`
-	StartDate             time.Time          `json:"start_date"`
-	EndDate               time.Time          `json:"end_date"`
-	TotalDeposits         decimal.Decimal    `json:"total_deposits"`
-	TotalWithdrawals      decimal.Decimal    `json:"total_withdrawals"`
-	NetChange             decimal.Decimal    `json:"net_change"`
-	TotalTransactionCount int64              `json:"total_transaction_count"`
-	AccountCount          int                `json:"account_count"`
-	AccountMetrics        []AccountMetrics   `json:"account_metrics"`
-	GeneratedAt           time.Time          `json:"generated_at"`
+	UserID                uuid.UUID        `json:"user_id"`
+	StartDate             time.Time        `json:"start_date"`
+	EndDate               time.Time        `json:"end_date"`
+	TotalDeposits         decimal.Decimal  `json:"total_deposits"`
+	TotalWithdrawals      decimal.Decimal  `json:"total_withdrawals"`
+	NetChange             decimal.Decimal  `json:"net_change"`
+	TotalTransactionCount int64            `json:"total_transaction_count"`
+	AccountCount          int              `json:"account_count"`
+	AccountMetrics        []AccountMetrics `json:"account_metrics"`
+	GeneratedAt           time.Time        `json:"generated_at"`
 }

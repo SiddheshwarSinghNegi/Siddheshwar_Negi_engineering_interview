@@ -13,15 +13,15 @@ type AccountValidationRequest struct {
 
 // TransferRequest represents a request to initiate or validate a transfer
 type TransferRequest struct {
-	Amount             float64         `json:"amount"`
-	Currency           string          `json:"currency"`
-	Description        string          `json:"description,omitempty"`
-	Direction          string          `json:"direction"`
-	TransferType       string          `json:"transfer_type"`
-	ReferenceNumber    string          `json:"reference_number"`
-	ScheduledDate      string          `json:"scheduled_date,omitempty"`
-	SourceAccount      AccountDetails  `json:"source_account"`
-	DestinationAccount AccountDetails  `json:"destination_account"`
+	Amount             float64        `json:"amount"`
+	Currency           string         `json:"currency"`
+	Description        string         `json:"description,omitempty"`
+	Direction          string         `json:"direction"`
+	TransferType       string         `json:"transfer_type"`
+	ReferenceNumber    string         `json:"reference_number"`
+	ScheduledDate      string         `json:"scheduled_date,omitempty"`
+	SourceAccount      AccountDetails `json:"source_account"`
+	DestinationAccount AccountDetails `json:"destination_account"`
 }
 
 // AccountDetails represents bank account details in a transfer
@@ -108,32 +108,32 @@ type AccountBalance struct {
 
 // TransferResponse represents a transfer response from NorthWind
 type TransferResponse struct {
-	TransferID             string   `json:"transfer_id"`
-	Status                 string   `json:"status"`
-	Amount                 float64  `json:"amount"`
-	Currency               string   `json:"currency"`
-	Direction              string   `json:"direction"`
-	TransferType           string   `json:"transfer_type"`
-	ReferenceNumber        string   `json:"reference_number"`
-	Description            string   `json:"description,omitempty"`
-	ScheduledDate          string   `json:"scheduled_date,omitempty"`
+	TransferID             string         `json:"transfer_id"`
+	Status                 string         `json:"status"`
+	Amount                 float64        `json:"amount"`
+	Currency               string         `json:"currency"`
+	Direction              string         `json:"direction"`
+	TransferType           string         `json:"transfer_type"`
+	ReferenceNumber        string         `json:"reference_number"`
+	Description            string         `json:"description,omitempty"`
+	ScheduledDate          string         `json:"scheduled_date,omitempty"`
 	SourceAccount          AccountDetails `json:"source_account"`
 	DestinationAccount     AccountDetails `json:"destination_account"`
-	InitiatedDate          string   `json:"initiated_date,omitempty"`
-	ProcessingDate         string   `json:"processing_date,omitempty"`
-	ExpectedCompletionDate string   `json:"expected_completion_date,omitempty"`
-	CompletedDate          string   `json:"completed_date,omitempty"`
-	Fee                    *float64 `json:"fee,omitempty"`
-	ExchangeRate           *float64 `json:"exchange_rate,omitempty"`
-	ErrorCode              string   `json:"error_code,omitempty"`
-	ErrorMessage           string   `json:"error_message,omitempty"`
-	CreatedAt              string   `json:"created_at,omitempty"`
-	UpdatedAt              string   `json:"updated_at,omitempty"`
+	InitiatedDate          string         `json:"initiated_date,omitempty"`
+	ProcessingDate         string         `json:"processing_date,omitempty"`
+	ExpectedCompletionDate string         `json:"expected_completion_date,omitempty"`
+	CompletedDate          string         `json:"completed_date,omitempty"`
+	Fee                    *float64       `json:"fee,omitempty"`
+	ExchangeRate           *float64       `json:"exchange_rate,omitempty"`
+	ErrorCode              string         `json:"error_code,omitempty"`
+	ErrorMessage           string         `json:"error_message,omitempty"`
+	CreatedAt              string         `json:"created_at,omitempty"`
+	UpdatedAt              string         `json:"updated_at,omitempty"`
 }
 
 // TransferValidationResponse represents transfer validation result
 type TransferValidationResponse struct {
-	Valid  bool                     `json:"valid"`
+	Valid  bool                      `json:"valid"`
 	Issues []TransferValidationIssue `json:"issues,omitempty"`
 }
 
@@ -146,10 +146,10 @@ type TransferValidationIssue struct {
 
 // BatchTransferResponse represents a batch transfer response
 type BatchTransferResponse struct {
-	Transfers []TransferResponse `json:"transfers"`
-	TotalCount int               `json:"total_count"`
-	SuccessCount int             `json:"success_count"`
-	FailedCount  int             `json:"failed_count"`
+	Transfers    []TransferResponse `json:"transfers"`
+	TotalCount   int                `json:"total_count"`
+	SuccessCount int                `json:"success_count"`
+	FailedCount  int                `json:"failed_count"`
 }
 
 // TransferStatusResponse represents a transfer status response from NorthWind

@@ -3,7 +3,6 @@ package repositories
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/array/banking-api/internal/models"
 	"github.com/google/uuid"
@@ -183,18 +182,6 @@ func (r *UserRepository) ListUsers(offset, limit int) ([]*models.User, int64, er
 	}
 
 	return users, total, nil
-}
-
-func isDuplicateKeyError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	errStr := err.Error()
-	// Postgres duplicate key error detection
-	return strings.Contains(errStr, "duplicate key") ||
-		strings.Contains(errStr, "UNIQUE constraint") ||
-		strings.Contains(errStr, "23505")
 }
 
 // GetByEmailExcluding retrieves a user by email, excluding a specific user ID

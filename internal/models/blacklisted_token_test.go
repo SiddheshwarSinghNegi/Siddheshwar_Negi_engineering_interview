@@ -29,7 +29,8 @@ func TestBlacklistedToken_IsExpired(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := &tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.expired, tt.token.IsExpired())
 		})
@@ -58,7 +59,8 @@ func TestBlacklistedToken_CanBeDeleted(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := &tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.canDelete, tt.token.CanBeDeleted())
 		})

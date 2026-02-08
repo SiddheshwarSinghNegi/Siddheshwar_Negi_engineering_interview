@@ -135,7 +135,8 @@ func TestAccount_Validate(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := &tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.account.Validate()
 			if tt.wantErr {
@@ -193,7 +194,8 @@ func TestAccount_Close(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := &tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.account.Close()
 			if tt.wantErr {
@@ -239,7 +241,8 @@ func TestAccount_Deactivate(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := &tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.account.Deactivate()
 			if tt.wantErr {
@@ -284,7 +287,8 @@ func TestAccount_Activate(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := &tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.account.Activate()
 			if tt.wantErr {
@@ -300,12 +304,12 @@ func TestAccount_Activate(t *testing.T) {
 
 func TestAccount_Debit(t *testing.T) {
 	tests := []struct {
-		name           string
-		account        Account
-		amount         decimal.Decimal
+		name            string
+		account         Account
+		amount          decimal.Decimal
 		expectedBalance decimal.Decimal
-		wantErr        bool
-		errMsg         string
+		wantErr         bool
+		errMsg          string
 	}{
 		{
 			name: "successful debit",
@@ -379,7 +383,8 @@ func TestAccount_Debit(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := &tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.account.Debit(tt.amount)
 			if tt.wantErr {
@@ -395,12 +400,12 @@ func TestAccount_Debit(t *testing.T) {
 
 func TestAccount_Credit(t *testing.T) {
 	tests := []struct {
-		name           string
-		account        Account
-		amount         decimal.Decimal
+		name            string
+		account         Account
+		amount          decimal.Decimal
 		expectedBalance decimal.Decimal
-		wantErr        bool
-		errMsg         string
+		wantErr         bool
+		errMsg          string
 	}{
 		{
 			name: "successful credit",
@@ -464,7 +469,8 @@ func TestAccount_Credit(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := &tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.account.Credit(tt.amount)
 			if tt.wantErr {
@@ -541,7 +547,8 @@ func TestAccount_CanWithdraw(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := &tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.account.CanWithdraw(tt.amount)
 			assert.Equal(t, tt.expected, result)
@@ -551,28 +558,28 @@ func TestAccount_CanWithdraw(t *testing.T) {
 
 func TestGenerateAccountNumber(t *testing.T) {
 	tests := []struct {
-		name         string
-		accountType  string
+		name           string
+		accountType    string
 		expectedPrefix string
 	}{
 		{
-			name:         "checking account number",
-			accountType:  AccountTypeChecking,
+			name:           "checking account number",
+			accountType:    AccountTypeChecking,
 			expectedPrefix: CheckingPrefix,
 		},
 		{
-			name:         "savings account number",
-			accountType:  AccountTypeSavings,
+			name:           "savings account number",
+			accountType:    AccountTypeSavings,
 			expectedPrefix: SavingsPrefix,
 		},
 		{
-			name:         "money market account number",
-			accountType:  AccountTypeMoneyMarket,
+			name:           "money market account number",
+			accountType:    AccountTypeMoneyMarket,
 			expectedPrefix: MoneyMarketPrefix,
 		},
 		{
-			name:         "invalid account type returns empty",
-			accountType:  "invalid",
+			name:           "invalid account type returns empty",
+			accountType:    "invalid",
 			expectedPrefix: "",
 		},
 	}

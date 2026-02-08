@@ -84,7 +84,7 @@ internal/
 ├── services/
 │   ├── northwind_account_service.go    # Validate + register external accounts
 │   ├── northwind_transfer_service.go   # Create + manage external transfers
-│   ├── northwind_polling_service.go    # Background poller for transfer status
+│   ├── northwind_polling_service.go     # Background poller for transfer status
 │   ├── regulator_service.go            # Webhook delivery with retry + audit
 │   └── regulator_service_test.go       # Backoff/retry unit tests
 ├── handlers/

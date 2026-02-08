@@ -177,7 +177,7 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 	userAgent := c.Request().UserAgent()
 
 	if err := h.authService.Logout(accessToken, ipAddress, userAgent); err != nil {
-		// Security: Always return success to prevent information leakage about system internals
+		_ = err // Security: Always return success to prevent information leakage about system internals
 	}
 
 	return c.JSON(http.StatusOK, SuccessResponse{

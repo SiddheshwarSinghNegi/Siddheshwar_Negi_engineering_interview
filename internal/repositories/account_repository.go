@@ -185,7 +185,7 @@ func (r *accountRepository) GenerateUniqueAccountNumber(accountType string) (str
 }
 
 // CreateWithTransaction creates an account with initial transactions in a database transaction
-func (r *accountRepository) CreateWithTransaction(account *models.Account, transactions []models.Transaction) error {
+func (r *accountRepository) CreateWithTransaction(account *models.Account, transactions []*models.Transaction) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(account).Error; err != nil {
 			return fmt.Errorf("failed to create account: %w", err)
@@ -195,7 +195,7 @@ func (r *accountRepository) CreateWithTransaction(account *models.Account, trans
 			for i := range transactions {
 				transactions[i].AccountID = account.ID
 			}
-			if err := tx.Create(&transactions).Error; err != nil {
+			if err := tx.Create(transactions).Error; err != nil {
 				return fmt.Errorf("failed to create initial transactions: %w", err)
 			}
 		}

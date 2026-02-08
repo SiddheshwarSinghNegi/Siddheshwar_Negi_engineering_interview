@@ -76,8 +76,12 @@ func (mr *MigrationRunner) RunMigrations() error {
 		return fmt.Errorf("failed to create postgres driver: %w", err)
 	}
 
+	// Use relative path to avoid golang-migrate file URL issues on Windows
+	// (absolute file:///F:/path produces "open .: The filename, directory name, or volume label syntax is incorrect")
+	sourceURL := "file://" + filepath.ToSlash(mr.migrationsPath)
+
 	m, err := migrate.NewWithDatabaseInstance(
-		fmt.Sprintf("file://%s", absPath),
+		sourceURL,
 		"postgres",
 		driver,
 	)
@@ -167,18 +171,15 @@ func (mr *MigrationRunner) GetMigrationStatus() (version uint, dirty bool, err e
 		return 0, false, fmt.Errorf("migrations directory not found")
 	}
 
-	absPath, err := filepath.Abs(mr.migrationsPath)
-	if err != nil {
-		return 0, false, fmt.Errorf("failed to get absolute path: %w", err)
-	}
-
 	driver, err := postgres.WithInstance(mr.db, &postgres.Config{})
 	if err != nil {
 		return 0, false, fmt.Errorf("failed to create postgres driver: %w", err)
 	}
 
+	sourceURL := "file://" + filepath.ToSlash(mr.migrationsPath)
+
 	m, err := migrate.NewWithDatabaseInstance(
-		fmt.Sprintf("file://%s", absPath),
+		sourceURL,
 		"postgres",
 		driver,
 	)

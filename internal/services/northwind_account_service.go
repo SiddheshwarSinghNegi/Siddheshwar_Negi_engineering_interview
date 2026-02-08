@@ -21,9 +21,9 @@ var (
 
 // NorthwindAccountService handles external account registration and validation
 type NorthwindAccountService struct {
-	client    *northwind.Client
-	repo      repositories.NorthwindExternalAccountRepositoryInterface
-	logger    *slog.Logger
+	client *northwind.Client
+	repo   repositories.NorthwindExternalAccountRepositoryInterface
+	logger *slog.Logger
 }
 
 // NewNorthwindAccountService creates a new NorthWind account service

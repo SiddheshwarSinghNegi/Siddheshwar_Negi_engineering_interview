@@ -31,7 +31,7 @@ func TestClient_GetBankInfo_Success(t *testing.T) {
 			t.Errorf("expected Bearer test-key, got %s", r.Header.Get("Authorization"))
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(expected)
+		_ = json.NewEncoder(w).Encode(expected)
 	}))
 	defer server.Close()
 
@@ -51,7 +51,7 @@ func TestClient_GetBankInfo_Success(t *testing.T) {
 func TestClient_GetBankInfo_HTTPError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(APIErrorResponse{
+		_ = json.NewEncoder(w).Encode(APIErrorResponse{
 			Message: "internal server error",
 		})
 	}))
@@ -83,16 +83,16 @@ func TestClient_ValidateAccount_Valid(t *testing.T) {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
 		var req AccountValidationRequest
-		json.NewDecoder(r.Body).Decode(&req)
+		_ = json.NewDecoder(r.Body).Decode(&req)
 		if req.AccountNumber != "123456" {
 			t.Errorf("expected account 123456, got %s", req.AccountNumber)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(AccountValidationResponse{
-			Valid:             true,
-			AccountNumber:     "123456",
-			RoutingNumber:     "021000089",
-			InstitutionName:   "Test Bank",
+		_ = json.NewEncoder(w).Encode(AccountValidationResponse{
+			Valid:           true,
+			AccountNumber:   "123456",
+			RoutingNumber:   "021000089",
+			InstitutionName: "Test Bank",
 		})
 	}))
 	defer server.Close()
@@ -119,7 +119,7 @@ func TestClient_GetAccountBalance(t *testing.T) {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(AccountBalance{
+		_ = json.NewEncoder(w).Encode(AccountBalance{
 			AccountNumber:    "123456",
 			AvailableBalance: 5000.50,
 			CurrentBalance:   5500.00,
@@ -147,7 +147,7 @@ func TestClient_InitiateTransfer(t *testing.T) {
 			t.Errorf("expected POST, got %s", r.Method)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(TransferResponse{
+		_ = json.NewEncoder(w).Encode(TransferResponse{
 			TransferID:      "abc-123-def",
 			Status:          "PENDING",
 			Amount:          1000,
@@ -192,7 +192,7 @@ func TestClient_GetTransferStatus(t *testing.T) {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(TransferResponse{
+		_ = json.NewEncoder(w).Encode(TransferResponse{
 			TransferID: "transfer-123",
 			Status:     "COMPLETED",
 		})
@@ -215,12 +215,12 @@ func TestClient_CancelTransfer(t *testing.T) {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 		var req CancelRequest
-		json.NewDecoder(r.Body).Decode(&req)
+		_ = json.NewDecoder(r.Body).Decode(&req)
 		if req.Reason != "test reason" {
 			t.Errorf("expected reason 'test reason', got %s", req.Reason)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(TransferResponse{
+		_ = json.NewEncoder(w).Encode(TransferResponse{
 			TransferID: "transfer-123",
 			Status:     "CANCELLED",
 		})
@@ -242,7 +242,7 @@ func TestClient_TraceIDPropagation(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		receivedTraceID = r.Header.Get("X-Trace-ID")
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(HealthResponse{Status: "ok"})
+		_ = json.NewEncoder(w).Encode(HealthResponse{Status: "ok"})
 	}))
 	defer server.Close()
 
@@ -260,7 +260,7 @@ func TestClient_TraceIDPropagation(t *testing.T) {
 func TestClient_NonJSONErrorBody(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadGateway)
-		w.Write([]byte("gateway timeout"))
+		_, _ = w.Write([]byte("gateway timeout"))
 	}))
 	defer server.Close()
 
@@ -321,5 +321,189 @@ func TestAPIError_ErrorMessage(t *testing.T) {
 				t.Errorf("expected %q, got %q", tt.expected, got)
 			}
 		})
+	}
+}
+
+// TestClient_DoRequest_RetryOn5xxThenSuccess verifies retry/backoff: first call returns 500, second returns 200.
+func TestClient_DoRequest_RetryOn5xxThenSuccess(t *testing.T) {
+	attempts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if attempts == 1 {
+			w.WriteHeader(http.StatusInternalServerError)
+			_ = json.NewEncoder(w).Encode(APIErrorResponse{Message: "server error"})
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(HealthResponse{Status: "ok"})
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, "test-key", WithRetry(2, 1))
+	result, err := client.Health(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error after retry: %v", err)
+	}
+	if result.Status != "ok" {
+		t.Errorf("expected status ok, got %s", result.Status)
+	}
+	if attempts != 2 {
+		t.Errorf("expected 2 attempts, got %d", attempts)
+	}
+}
+
+func TestClient_GetDomains_Success(t *testing.T) {
+	expected := []Domain{
+		{Name: "dom1", Description: "First"},
+		{Name: "dom2", Description: "Second"},
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/domains" {
+			t.Errorf("expected /domains, got %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(expected)
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, "test-key")
+	result, err := client.GetDomains(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 2 || result[0].Name != "dom1" || result[1].Name != "dom2" {
+		t.Errorf("expected 2 domains, got %+v", result)
+	}
+}
+
+func TestClient_ListAccounts_Success(t *testing.T) {
+	expected := []ExternalAccount{
+		{AccountNumber: "acc1", RoutingNumber: "021000089", AccountHolderName: "Alice", Status: "ACTIVE"},
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/external/accounts" {
+			t.Errorf("expected /external/accounts, got %s", r.URL.Path)
+		}
+		// offset=0 is omitted by client; order of params may vary
+		q := r.URL.Query()
+		if q.Get("limit") != "10" || q.Get("status") != "ACTIVE" || q.Get("type") != "CHECKING" {
+			t.Errorf("unexpected query: %s", r.URL.RawQuery)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(expected)
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, "test-key")
+	result, err := client.ListAccounts(context.Background(), 10, 0, "CHECKING", "ACTIVE")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 || result[0].AccountNumber != "acc1" {
+		t.Errorf("expected one account acc1, got %+v", result)
+	}
+}
+
+func TestClient_ValidateTransfer_Success(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/external/transfers/validate" {
+			t.Errorf("expected /external/transfers/validate, got %s", r.URL.Path)
+		}
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(TransferValidationResponse{
+			Valid:  true,
+			Issues: nil,
+		})
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, "test-key")
+	req := TransferRequest{
+		Amount:          100,
+		Currency:        "USD",
+		Direction:       "OUTBOUND",
+		TransferType:    "ACH",
+		ReferenceNumber: "REF1",
+		SourceAccount:      AccountDetails{AccountHolderName: "A", AccountNumber: "1", RoutingNumber: "021000089"},
+		DestinationAccount: AccountDetails{AccountHolderName: "B", AccountNumber: "2", RoutingNumber: "021000089"},
+	}
+	result, err := client.ValidateTransfer(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.Valid {
+		t.Error("expected valid=true")
+	}
+}
+
+func TestClient_Health_Success(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/health" {
+			t.Errorf("expected /health, got %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(HealthResponse{Status: "healthy"})
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, "test-key")
+	result, err := client.Health(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.Status != "healthy" {
+		t.Errorf("expected status healthy, got %s", result.Status)
+	}
+}
+
+func TestClient_ListTransfers_Success(t *testing.T) {
+	expected := []TransferResponse{
+		{TransferID: "t1", Status: "COMPLETED", Amount: 100, Currency: "USD"},
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/external/transfers" {
+			t.Errorf("expected /external/transfers, got %s", r.URL.Path)
+		}
+		// offset=0 is omitted by client; order of params may vary
+		q := r.URL.Query()
+		if q.Get("direction") != "OUTBOUND" || q.Get("limit") != "5" || q.Get("status") != "COMPLETED" {
+			t.Errorf("unexpected query: %s", r.URL.RawQuery)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(expected)
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, "test-key")
+	result, err := client.ListTransfers(context.Background(), TransferListFilters{
+		Status: "COMPLETED", Direction: "OUTBOUND", Limit: 5, Offset: 0,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 || result[0].TransferID != "t1" || result[0].Status != "COMPLETED" {
+		t.Errorf("expected one transfer t1 COMPLETED, got %+v", result)
+	}
+}
+
+func TestClient_DoRequest_4xxNoRetry(t *testing.T) {
+	attempts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(APIErrorResponse{Message: "bad request"})
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, "test-key", WithRetry(2, 1))
+	_, err := client.Health(context.Background())
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if attempts != 1 {
+		t.Errorf("expected no retry on 4xx, got %d attempts", attempts)
 	}
 }

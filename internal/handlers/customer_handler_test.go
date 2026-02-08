@@ -13,10 +13,11 @@ import (
 	"github.com/array/banking-api/internal/models"
 	"github.com/array/banking-api/internal/services"
 	"github.com/array/banking-api/internal/services/service_mocks"
-	"github.com/go-playground/validator/v10"
+	"github.com/array/banking-api/internal/validation"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -55,7 +56,7 @@ func TestCustomerHandlerSuite(t *testing.T) {
 // Test SearchCustomers - successful search with results
 func (s *CustomerHandlerTestSuite) TestSearchCustomers_SuccessfulSearchWithResults() {
 	e := echo.New()
-	e.Validator = &CustomValidator{validator: validator.New()}
+	e.Validator = validation.EchoValidator()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/customers/search?q=john@example.com&limit=10&offset=0", nil)
 	rec := httptest.NewRecorder()
@@ -112,7 +113,7 @@ func (s *CustomerHandlerTestSuite) TestSearchCustomers_SuccessfulSearchWithResul
 // Test SearchCustomers - missing query parameter
 func (s *CustomerHandlerTestSuite) TestSearchCustomers_MissingQueryParameter() {
 	e := echo.New()
-	e.Validator = &CustomValidator{validator: validator.New()}
+	e.Validator = validation.EchoValidator()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/customers/search?limit=10&offset=0", nil)
 	rec := httptest.NewRecorder()
@@ -134,7 +135,7 @@ func (s *CustomerHandlerTestSuite) TestSearchCustomers_MissingQueryParameter() {
 // Test SearchCustomers - invalid limit
 func (s *CustomerHandlerTestSuite) TestSearchCustomers_InvalidLimit() {
 	e := echo.New()
-	e.Validator = &CustomValidator{validator: validator.New()}
+	e.Validator = validation.EchoValidator()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/customers/search?q=test&limit=2000&offset=0", nil)
 	rec := httptest.NewRecorder()
@@ -156,7 +157,7 @@ func (s *CustomerHandlerTestSuite) TestSearchCustomers_InvalidLimit() {
 // Test SearchCustomers - service error
 func (s *CustomerHandlerTestSuite) TestSearchCustomers_ServiceError() {
 	e := echo.New()
-	e.Validator = &CustomValidator{validator: validator.New()}
+	e.Validator = validation.EchoValidator()
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/customers/search?q=test@example.com&limit=10&offset=0", nil)
 	rec := httptest.NewRecorder()
@@ -374,21 +375,21 @@ func (s *CustomerHandlerTestSuite) TestCreateCustomer_Successful() {
 	adminID := uuid.New()
 	requestBody := `{
 		"email": "newcustomer@example.com",
-		"first_name": "Jane",
-		"last_name": "Smith",
-		"phone_number": "+14155552671",
-		"date_of_birth": "1990-01-15",
+		"firstName": "Jane",
+		"lastName": "Smith",
+		"phoneNumber": "+14155552671",
+		"dateOfBirth": "1990-01-15",
 		"address": "123 Main St",
 		"city": "San Francisco",
 		"state": "CA",
-		"zip_code": "94102",
+		"zipCode": "94102",
 		"ssn": "123456789",
-		"employment_status": "employed",
-		"annual_income": "75000"
+		"employmentStatus": "employed",
+		"annualIncome": "75000"
 	}`
 
 	e := echo.New()
-	e.Validator = &CustomValidator{validator: validator.New()}
+	e.Validator = validation.EchoValidator()
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/customers", strings.NewReader(requestBody))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -435,16 +436,16 @@ func (s *CustomerHandlerTestSuite) TestCreateCustomer_InvalidEmail() {
 	adminID := uuid.New()
 	requestBody := `{
 		"email": "invalid-email",
-		"first_name": "Jane",
-		"last_name": "Smith",
-		"date_of_birth": "1990-01-15",
+		"firstName": "Jane",
+		"lastName": "Smith",
+		"dateOfBirth": "1990-01-15",
 		"ssn": "123456789",
-		"employment_status": "employed",
-		"annual_income": "75000"
+		"employmentStatus": "employed",
+		"annualIncome": "75000"
 	}`
 
 	e := echo.New()
-	e.Validator = &CustomValidator{validator: validator.New()}
+	e.Validator = validation.EchoValidator()
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/customers", strings.NewReader(requestBody))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -470,7 +471,7 @@ func (s *CustomerHandlerTestSuite) TestCreateCustomer_MissingRequiredFields() {
 	requestBody := `{"email": "test@example.com"}`
 
 	e := echo.New()
-	e.Validator = &CustomValidator{validator: validator.New()}
+	e.Validator = validation.EchoValidator()
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/customers", strings.NewReader(requestBody))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -495,16 +496,16 @@ func (s *CustomerHandlerTestSuite) TestCreateCustomer_EmailAlreadyExists() {
 	adminID := uuid.New()
 	requestBody := `{
 		"email": "existing@example.com",
-		"first_name": "Jane",
-		"last_name": "Smith",
-		"date_of_birth": "1990-01-15",
+		"firstName": "Jane",
+		"lastName": "Smith",
+		"dateOfBirth": "1990-01-15",
 		"ssn": "123456789",
-		"employment_status": "employed",
-		"annual_income": "75000"
+		"employmentStatus": "employed",
+		"annualIncome": "75000"
 	}`
 
 	e := echo.New()
-	e.Validator = &CustomValidator{validator: validator.New()}
+	e.Validator = validation.EchoValidator()
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/customers", strings.NewReader(requestBody))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -524,4 +525,81 @@ func (s *CustomerHandlerTestSuite) TestCreateCustomer_EmailAlreadyExists() {
 
 	s.NoError(err)
 	s.Equal(http.StatusUnprocessableEntity, rec.Code)
+}
+
+func (s *CustomerHandlerTestSuite) TestGetMyAccounts_Success() {
+	userID := uuid.New()
+	e := echo.New()
+	e.Validator = validation.EchoValidator()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/customers/me/accounts", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("user_id", userID)
+	c.Set("user_role", models.RoleCustomer)
+
+	accounts := []*models.Account{
+		{ID: uuid.New(), UserID: userID, AccountNumber: "1012345678", AccountType: "checking", Balance: decimal.NewFromFloat(500), Status: "active"},
+	}
+	s.mockAccountService.EXPECT().GetCustomerAccounts(userID).Return(accounts, nil)
+	s.mockMetrics.EXPECT().RecordProcessingTime(gomock.Any(), gomock.Any()).AnyTimes()
+
+	handler := NewCustomerHandler(s.mockSearchService, s.mockProfileService, s.mockAccountService, s.mockPasswordService, s.mockAuditService, s.logger, s.mockMetrics)
+	err := handler.GetMyAccounts(c)
+	s.NoError(err)
+	s.Equal(http.StatusOK, rec.Code)
+}
+
+func (s *CustomerHandlerTestSuite) TestGetMyAccounts_Unauthorized() {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/customers/me/accounts", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	handler := NewCustomerHandler(s.mockSearchService, s.mockProfileService, s.mockAccountService, s.mockPasswordService, s.mockAuditService, s.logger, s.mockMetrics)
+	err := handler.GetMyAccounts(c)
+	s.NoError(err)
+	s.Equal(http.StatusUnauthorized, rec.Code)
+}
+
+func (s *CustomerHandlerTestSuite) TestUpdateMyPassword_Success() {
+	userID := uuid.New()
+	e := echo.New()
+	e.Validator = validation.EchoValidator()
+	body := `{"current_password":"OldPass123!","new_password":"NewPass456!X"}`
+	req := httptest.NewRequest(http.MethodPut, "/api/v1/customers/me/password", strings.NewReader(body))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("user_id", userID)
+	c.Set("user_role", models.RoleCustomer)
+
+	s.mockPasswordService.EXPECT().CustomerUpdatePassword(userID, "OldPass123!", "NewPass456!X").Return(nil)
+	s.mockMetrics.EXPECT().RecordProcessingTime(gomock.Any(), gomock.Any()).AnyTimes()
+
+	handler := NewCustomerHandler(s.mockSearchService, s.mockProfileService, s.mockAccountService, s.mockPasswordService, s.mockAuditService, s.logger, s.mockMetrics)
+	err := handler.UpdateMyPassword(c)
+	s.NoError(err)
+	s.Equal(http.StatusOK, rec.Code)
+}
+
+func (s *CustomerHandlerTestSuite) TestGetMyActivity_Success() {
+	userID := uuid.New()
+	e := echo.New()
+	e.Validator = validation.EchoValidator()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/customers/me/activity?limit=10&offset=0", nil)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.Set("user_id", userID)
+	c.Set("user_role", models.RoleCustomer)
+
+	activities := []*models.AuditLog{
+		{ID: uuid.New(), Action: models.AuditActionLogin, Resource: "user", ResourceID: userID.String()},
+	}
+	s.mockAuditService.EXPECT().GetCustomerActivity(userID, nil, nil, 10, 0).Return(activities, int64(1), nil)
+	s.mockMetrics.EXPECT().RecordProcessingTime(gomock.Any(), gomock.Any()).AnyTimes()
+
+	handler := NewCustomerHandler(s.mockSearchService, s.mockProfileService, s.mockAccountService, s.mockPasswordService, s.mockAuditService, s.logger, s.mockMetrics)
+	err := handler.GetMyActivity(c)
+	s.NoError(err)
+	s.Equal(http.StatusOK, rec.Code)
 }

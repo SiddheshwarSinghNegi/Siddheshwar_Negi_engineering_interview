@@ -285,4 +285,3 @@ func (h *AccountSummaryHandler) handleServiceError(c echo.Context, err error) er
 
 	return SendSystemError(c, err)
 }
-

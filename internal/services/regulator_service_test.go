@@ -1,8 +1,18 @@
 package services
 
 import (
+	"context"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/array/banking-api/internal/models"
+	"github.com/array/banking-api/internal/repositories/repository_mocks"
+	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 )
 
 func TestRegulatorService_CalculateBackoff(t *testing.T) {
@@ -85,4 +95,173 @@ func TestRegulatorService_BackoffIsExponential(t *testing.T) {
 		}
 		prevMedian = median
 	}
+}
+
+func makeTestNorthwindTransfer(t *testing.T) *models.NorthwindTransfer {
+	t.Helper()
+	return &models.NorthwindTransfer{
+		ID:                  uuid.New(),
+		NorthwindTransferID: uuid.New(),
+		Amount:              decimal.NewFromFloat(100.50),
+		Currency:            "USD",
+		Direction:           "outbound",
+		TransferType:        "ach",
+		Status:              models.NWTransferStatusCompleted,
+	}
+}
+
+func TestRegulatorService_CreateAndSendNotification_HTTP200_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("expected POST, got %s", r.Method)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	notifRepo := repository_mocks.NewMockRegulatorNotificationRepositoryInterface(ctrl)
+	attemptRepo := repository_mocks.NewMockRegulatorNotificationAttemptRepositoryInterface(ctrl)
+	transfer := makeTestNorthwindTransfer(t)
+
+	notifRepo.EXPECT().ExistsForTransferAndStatus(transfer.ID, models.NWTransferStatusCompleted).Return(false, nil)
+	notifRepo.EXPECT().Create(gomock.Any()).DoAndReturn(func(n *models.RegulatorNotification) error {
+		n.ID = uuid.New()
+		return nil
+	}).Times(1)
+	notifRepo.EXPECT().Update(gomock.Any()).DoAndReturn(func(n *models.RegulatorNotification) error {
+		if !n.Delivered {
+			t.Error("expected Delivered=true after 200")
+		}
+		return nil
+	}).Times(1)
+	attemptRepo.EXPECT().Create(gomock.Any()).Return(nil).Times(1)
+
+	svc := NewRegulatorService(
+		server.URL,
+		2, 60,
+		notifRepo, attemptRepo,
+		slog.Default(),
+		server.Client(),
+	)
+	ctx := context.Background()
+	err := svc.CreateAndSendNotification(ctx, transfer, models.NWTransferStatusCompleted)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRegulatorService_CreateAndSendNotification_HTTP500_SchedulesRetry(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	notifRepo := repository_mocks.NewMockRegulatorNotificationRepositoryInterface(ctrl)
+	attemptRepo := repository_mocks.NewMockRegulatorNotificationAttemptRepositoryInterface(ctrl)
+	transfer := makeTestNorthwindTransfer(t)
+
+	notifRepo.EXPECT().ExistsForTransferAndStatus(transfer.ID, models.NWTransferStatusFailed).Return(false, nil)
+	notifRepo.EXPECT().Create(gomock.Any()).DoAndReturn(func(n *models.RegulatorNotification) error {
+		n.ID = uuid.New()
+		return nil
+	}).Times(1)
+	notifRepo.EXPECT().Update(gomock.Any()).DoAndReturn(func(n *models.RegulatorNotification) error {
+		if n.Delivered {
+			t.Error("expected Delivered=false after 500")
+		}
+		if n.NextAttemptAt == nil {
+			t.Error("expected NextAttemptAt set for retry")
+		}
+		return nil
+	}).Times(1)
+	attemptRepo.EXPECT().Create(gomock.Any()).Return(nil).Times(1)
+
+	svc := NewRegulatorService(
+		server.URL,
+		2, 60,
+		notifRepo, attemptRepo,
+		slog.Default(),
+		server.Client(),
+	)
+	ctx := context.Background()
+	err := svc.CreateAndSendNotification(ctx, transfer, models.NWTransferStatusFailed)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRegulatorService_CreateAndSendNotification_Idempotency_SkipsIfExists(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	notifRepo := repository_mocks.NewMockRegulatorNotificationRepositoryInterface(ctrl)
+	attemptRepo := repository_mocks.NewMockRegulatorNotificationAttemptRepositoryInterface(ctrl)
+	transfer := makeTestNorthwindTransfer(t)
+
+	notifRepo.EXPECT().ExistsForTransferAndStatus(transfer.ID, models.NWTransferStatusCompleted).Return(true, nil)
+	notifRepo.EXPECT().Create(gomock.Any()).Times(0)
+	attemptRepo.EXPECT().Create(gomock.Any()).Times(0)
+
+	svc := NewRegulatorService(
+		"http://localhost:9999/webhook",
+		2, 60,
+		notifRepo, attemptRepo,
+		slog.Default(),
+		nil,
+	)
+	ctx := context.Background()
+	err := svc.CreateAndSendNotification(ctx, transfer, models.NWTransferStatusCompleted)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRegulatorService_RetryOnce_DeliversPending(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	notifRepo := repository_mocks.NewMockRegulatorNotificationRepositoryInterface(ctrl)
+	attemptRepo := repository_mocks.NewMockRegulatorNotificationAttemptRepositoryInterface(ctrl)
+
+	payload := []byte(`{"event_id":"e1","transfer_id":"t1","status":"COMPLETED"}`)
+	notif := models.RegulatorNotification{
+		ID:             uuid.New(),
+		TransferID:     uuid.New(),
+		TerminalStatus: models.NWTransferStatusCompleted,
+		Delivered:      false,
+		AttemptCount:   0,
+		Payload:        payload,
+	}
+	now := time.Now()
+	notif.NextAttemptAt = &now
+
+	notifRepo.EXPECT().GetPendingNotifications(20).Return([]models.RegulatorNotification{notif}, nil)
+	notifRepo.EXPECT().Update(gomock.Any()).DoAndReturn(func(n *models.RegulatorNotification) error {
+		if !n.Delivered {
+			t.Error("expected Delivered=true after 200")
+		}
+		return nil
+	}).Times(1)
+	attemptRepo.EXPECT().Create(gomock.Any()).Return(nil).Times(1)
+
+	svc := NewRegulatorService(
+		server.URL,
+		2, 60,
+		notifRepo, attemptRepo,
+		slog.Default(),
+		server.Client(),
+	)
+	ctx := context.Background()
+	svc.RetryOnce(ctx)
 }

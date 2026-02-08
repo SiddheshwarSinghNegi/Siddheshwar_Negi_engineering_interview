@@ -618,8 +618,8 @@ func (h *CustomerHandler) GetCustomerActivity(c echo.Context) error {
 	}
 
 	// Parse query parameters
-	limit := 50  // default
-	offset := 0  // default
+	limit := 50 // default
+	offset := 0 // default
 	if limitParam := c.QueryParam("limit"); limitParam != "" {
 		if l, err := strconv.Atoi(limitParam); err == nil && l > 0 {
 			limit = l
@@ -663,8 +663,8 @@ func (h *CustomerHandler) GetMyActivity(c echo.Context) error {
 	}
 
 	// Parse query parameters
-	limit := 50  // default
-	offset := 0  // default
+	limit := 50 // default
+	offset := 0 // default
 	if limitParam := c.QueryParam("limit"); limitParam != "" {
 		if l, err := strconv.Atoi(limitParam); err == nil && l > 0 {
 			limit = l

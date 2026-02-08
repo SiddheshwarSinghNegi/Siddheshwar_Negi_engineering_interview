@@ -25,9 +25,11 @@ type Config struct {
 }
 
 type NorthWindConfig struct {
-	BaseURL             string
-	APIKey              string
-	PollIntervalSeconds int
+	BaseURL               string
+	APIKey                string
+	PollIntervalSeconds   int
+	MaxRetries            int
+	RetryInitialBackoffMs int
 }
 
 type RegulatorConfig struct {
@@ -114,9 +116,11 @@ func Load() *Config {
 	}
 
 	config.NorthWind = NorthWindConfig{
-		BaseURL:             getEnv("NORTHWIND_BASE_URL", "https://northwind.dev.array.io"),
-		APIKey:              getEnv("NORTHWIND_API_KEY", ""),
-		PollIntervalSeconds: getIntEnv("NORTHWIND_POLL_INTERVAL_SECONDS", 10),
+		BaseURL:               getEnv("NORTHWIND_BASE_URL", "https://northwind.dev.array.io"),
+		APIKey:                getEnv("NORTHWIND_API_KEY", ""),
+		PollIntervalSeconds:   getIntEnv("NORTHWIND_POLL_INTERVAL_SECONDS", 10),
+		MaxRetries:            getIntEnv("NORTHWIND_MAX_RETRIES", 3),
+		RetryInitialBackoffMs: getIntEnv("NORTHWIND_RETRY_INITIAL_BACKOFF_MS", 500),
 	}
 
 	config.Regulator = RegulatorConfig{

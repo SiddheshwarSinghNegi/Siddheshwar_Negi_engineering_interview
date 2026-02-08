@@ -271,7 +271,7 @@ func (s *AccountRepositorySuite) TestCreateWithTransaction() {
 		Currency:      "USD",
 	}
 
-	transactions := []models.Transaction{
+	transactions := []*models.Transaction{
 		{
 			TransactionType: models.TransactionTypeCredit,
 			Amount:          decimal.NewFromFloat(1000.00),

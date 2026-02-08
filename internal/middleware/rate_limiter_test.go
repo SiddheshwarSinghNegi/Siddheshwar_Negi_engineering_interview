@@ -16,10 +16,10 @@ func TestRateLimiter(t *testing.T) {
 	mu.Lock()
 	visitors = make(map[string]*visitor)
 	mu.Unlock()
-	
+
 	e := echo.New()
 	middleware := RateLimiter()
-	
+
 	handler := middleware(func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 	})
@@ -63,10 +63,10 @@ func TestRateLimiterWithConfig(t *testing.T) {
 	mu.Lock()
 	visitors = make(map[string]*visitor)
 	mu.Unlock()
-	
+
 	e := echo.New()
 	middleware := RateLimiterWithConfig(2, 4) // Lower limits for testing
-	
+
 	handler := middleware(func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 	})
@@ -99,23 +99,23 @@ func TestRateLimiterDifferentIPs(t *testing.T) {
 	// Reset the global visitors map and rate limiter config for clean test
 	mu.Lock()
 	visitors = make(map[string]*visitor)
-	requestsPerSecond = 5  // Reset to default
-	burstSize = 10         // Reset to default
+	requestsPerSecond = 5 // Reset to default
+	burstSize = 10        // Reset to default
 	mu.Unlock()
-	
+
 	// Sleep briefly to ensure cleanup goroutine doesn't interfere
 	time.Sleep(10 * time.Millisecond)
-	
+
 	e := echo.New()
 	middleware := RateLimiter()
-	
+
 	handler := middleware(func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 	})
 
 	// Different IPs should have independent rate limits
 	ips := []string{"192.168.1.1:1234", "192.168.1.2:1234", "192.168.1.3:1234"}
-	
+
 	for _, ip := range ips {
 		for i := 0; i < 5; i++ {
 			req := httptest.NewRequest(http.MethodGet, "/test", nil)
@@ -181,10 +181,10 @@ func TestGetIP(t *testing.T) {
 				req.Header.Set(k, v)
 			}
 			req.RemoteAddr = tt.remoteAddr
-			
+
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
-			
+
 			ip := getIP(c)
 			assert.Equal(t, tt.expected, ip)
 		})
@@ -200,7 +200,7 @@ func TestVisitorCleanup(t *testing.T) {
 		lastSeen: time.Now().Add(-5 * time.Minute),
 	}
 	visitors["old_ip"] = oldVisitor
-	
+
 	newVisitor := &visitor{
 		limiter:  nil,
 		lastSeen: time.Now(),
@@ -219,12 +219,12 @@ func TestVisitorCleanup(t *testing.T) {
 	mu.Unlock()
 
 	assert.Equal(t, 1, visitorCount, "Old visitor should be removed")
-	
+
 	mu.RLock()
 	_, oldExists := visitors["old_ip"]
 	_, newExists := visitors["new_ip"]
 	mu.RUnlock()
-	
+
 	assert.False(t, oldExists, "Old visitor should not exist")
 	assert.True(t, newExists, "New visitor should still exist")
 }
@@ -233,13 +233,13 @@ func TestRateLimiterConcurrency(t *testing.T) {
 	// Reset the global visitors map and config for clean test
 	mu.Lock()
 	visitors = make(map[string]*visitor)
-	requestsPerSecond = 5  // Reset to default
-	burstSize = 10         // Reset to default
+	requestsPerSecond = 5 // Reset to default
+	burstSize = 10        // Reset to default
 	mu.Unlock()
-	
+
 	e := echo.New()
 	middleware := RateLimiter()
-	
+
 	handler := middleware(func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 	})
@@ -254,7 +254,7 @@ func TestRateLimiterConcurrency(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			
+
 			req := httptest.NewRequest(http.MethodGet, "/test", nil)
 			req.RemoteAddr = "192.168.1.100:12345"
 			rec := httptest.NewRecorder()

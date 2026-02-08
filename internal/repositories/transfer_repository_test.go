@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"gorm.io/driver/sqlite"
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -133,10 +133,12 @@ func (s *TransferRepositoryTestSuite) TestFindByID_ExistingTransfer() {
 
 	retrieved, err := s.repo.FindByID(transfer.ID)
 	require.NoError(s.T(), err)
+	require.NotNil(s.T(), retrieved)
 	assert.Equal(s.T(), transfer.ID, retrieved.ID)
 	assert.Equal(s.T(), transfer.FromAccountID, retrieved.FromAccountID)
 	assert.Equal(s.T(), transfer.ToAccountID, retrieved.ToAccountID)
-	assert.True(s.T(), transfer.Amount.Equal(retrieved.Amount))
+	// Compare decimal by string to avoid driver-specific precision differences (glebarez vs mattn/sqlite3)
+	assert.True(s.T(), transfer.Amount.Equal(retrieved.Amount), "amount: %s vs %s", transfer.Amount.String(), retrieved.Amount.String())
 }
 
 // TestFindByID_NonExistingTransfer tests finding non-existing transfer

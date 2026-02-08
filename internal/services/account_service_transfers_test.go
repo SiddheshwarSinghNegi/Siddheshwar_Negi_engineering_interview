@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/suite"
-	"gorm.io/gorm"
 )
 
 // TransferServiceTestSuite defines tests for transfer functionality
@@ -24,7 +23,6 @@ type TransferServiceTestSuite struct {
 	transferRepo    *repository_mocks.MockTransferRepositoryInterface
 	userRepo        *repository_mocks.MockUserRepositoryInterface
 	auditRepo       *repository_mocks.MockAuditLogRepositoryInterface
-	db              *gorm.DB
 	service         AccountServiceInterface
 }
 

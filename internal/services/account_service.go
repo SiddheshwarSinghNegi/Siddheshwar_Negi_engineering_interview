@@ -92,9 +92,9 @@ func (s *accountService) CreateAccount(userID uuid.UUID, accountType string, ini
 		Currency:      "USD",
 	}
 
-	var transactions []models.Transaction
+	var transactions []*models.Transaction
 	if initialDeposit.GreaterThan(decimal.Zero) {
-		transaction := models.Transaction{
+		transaction := &models.Transaction{
 			TransactionType: models.TransactionTypeCredit,
 			Amount:          initialDeposit,
 			BalanceBefore:   decimal.Zero,
@@ -183,17 +183,16 @@ func (s *accountService) createAccountWithSampleData(userID uuid.UUID, accountTy
 }
 
 // generateSampleTransactions generates random transactions that result in target balance
-func (s *accountService) generateSampleTransactions(targetBalance decimal.Decimal) []models.Transaction {
-	var transactions []models.Transaction
-	currentBalance := decimal.Zero
+func (s *accountService) generateSampleTransactions(targetBalance decimal.Decimal) []*models.Transaction {
+	var transactions []*models.Transaction
 
 	// 5-10 transactions simulates realistic account history
 	numTransactions := rand.Intn(6) + 5
 
 	initialDeposit := decimal.NewFromFloat(float64(rand.Intn(3000) + 2000))
-	currentBalance = initialDeposit
+	currentBalance := initialDeposit
 
-	transactions = append(transactions, models.Transaction{
+	transactions = append(transactions, &models.Transaction{
 		TransactionType: models.TransactionTypeCredit,
 		Amount:          initialDeposit,
 		BalanceBefore:   decimal.Zero,
@@ -224,7 +223,7 @@ func (s *accountService) generateSampleTransactions(targetBalance decimal.Decima
 			currentBalance = currentBalance.Sub(amount)
 		}
 
-		transactions = append(transactions, models.Transaction{
+		transactions = append(transactions, &models.Transaction{
 			TransactionType: transactionType,
 			Amount:          amount,
 			BalanceBefore:   transactions[i-1].BalanceAfter,
@@ -237,11 +236,10 @@ func (s *accountService) generateSampleTransactions(targetBalance decimal.Decima
 
 	// Reconciliation transaction ensures exact target balance
 	if !currentBalance.Equal(targetBalance) {
-		var finalTransaction models.Transaction
 		adjustment := targetBalance.Sub(currentBalance).Abs()
 
 		if targetBalance.GreaterThan(currentBalance) {
-			finalTransaction = models.Transaction{
+			transactions = append(transactions, &models.Transaction{
 				TransactionType: models.TransactionTypeCredit,
 				Amount:          adjustment,
 				BalanceBefore:   currentBalance,
@@ -249,9 +247,9 @@ func (s *accountService) generateSampleTransactions(targetBalance decimal.Decima
 				Description:     "Bonus Interest Payment",
 				Status:          models.TransactionStatusCompleted,
 				Reference:       models.GenerateTransactionReference(),
-			}
+			})
 		} else {
-			finalTransaction = models.Transaction{
+			transactions = append(transactions, &models.Transaction{
 				TransactionType: models.TransactionTypeDebit,
 				Amount:          adjustment,
 				BalanceBefore:   currentBalance,
@@ -259,9 +257,8 @@ func (s *accountService) generateSampleTransactions(targetBalance decimal.Decima
 				Description:     "Service Fee Adjustment",
 				Status:          models.TransactionStatusCompleted,
 				Reference:       models.GenerateTransactionReference(),
-			}
+			})
 		}
-		transactions = append(transactions, finalTransaction)
 	}
 
 	return transactions
@@ -730,8 +727,8 @@ func (s *accountService) GetUserTransfers(userID uuid.UUID, filters models.Trans
 	}
 
 	accountIDs := make([]uuid.UUID, len(accounts))
-	for i, account := range accounts {
-		accountIDs[i] = account.ID
+	for i := range accounts {
+		accountIDs[i] = accounts[i].ID
 	}
 
 	transfers, total, err := s.transferRepo.FindByUserAccountsWithFilters(accountIDs, filters, offset, limit)

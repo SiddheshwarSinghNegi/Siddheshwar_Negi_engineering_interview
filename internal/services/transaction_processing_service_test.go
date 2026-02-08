@@ -168,7 +168,9 @@ func (s *TransactionProcessingServiceTestSuite) TestTransactionProcessingService
 		s.transactionRepo.EXPECT().GetByID(item.TransactionID).Return(transaction, nil)
 		s.accountRepo.EXPECT().GetByID(accountID).Return(account, nil)
 		s.accountRepo.EXPECT().UpdateBalance(accountID, gomock.Any(), gomock.Any()).Return(nil)
-		s.transactionRepo.EXPECT().UpdateWithOptimisticLock(transaction, 1).Return(nil)
+		// Use gomock.Any() for transaction to avoid data race: the service mutates it in
+		// Complete() before calling UpdateWithOptimisticLock; gomock reading it for matching races.
+		s.transactionRepo.EXPECT().UpdateWithOptimisticLock(gomock.Any(), 1).Return(nil)
 		s.queueRepo.EXPECT().MarkCompleted(item.ID).Return(nil)
 	}
 

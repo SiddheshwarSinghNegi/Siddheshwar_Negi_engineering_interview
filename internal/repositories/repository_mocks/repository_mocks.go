@@ -68,7 +68,7 @@ func (mr *MockAccountRepositoryInterfaceMockRecorder) Create(account interface{}
 }
 
 // CreateWithTransaction mocks base method.
-func (m *MockAccountRepositoryInterface) CreateWithTransaction(account *models.Account, transactions []models.Transaction) error {
+func (m *MockAccountRepositoryInterface) CreateWithTransaction(account *models.Account, transactions []*models.Transaction) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateWithTransaction", account, transactions)
 	ret0, _ := ret[0].(error)
@@ -1578,4 +1578,377 @@ func (m *MockBlacklistedTokenRepositoryInterface) GetByJTI(jti string) (*models.
 func (mr *MockBlacklistedTokenRepositoryInterfaceMockRecorder) GetByJTI(jti interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByJTI", reflect.TypeOf((*MockBlacklistedTokenRepositoryInterface)(nil).GetByJTI), jti)
+}
+
+// MockNorthwindExternalAccountRepositoryInterface is a mock of NorthwindExternalAccountRepositoryInterface interface.
+type MockNorthwindExternalAccountRepositoryInterface struct {
+	ctrl     *gomock.Controller
+	recorder *MockNorthwindExternalAccountRepositoryInterfaceMockRecorder
+}
+
+// MockNorthwindExternalAccountRepositoryInterfaceMockRecorder is the mock recorder for MockNorthwindExternalAccountRepositoryInterface.
+type MockNorthwindExternalAccountRepositoryInterfaceMockRecorder struct {
+	mock *MockNorthwindExternalAccountRepositoryInterface
+}
+
+// NewMockNorthwindExternalAccountRepositoryInterface creates a new mock instance.
+func NewMockNorthwindExternalAccountRepositoryInterface(ctrl *gomock.Controller) *MockNorthwindExternalAccountRepositoryInterface {
+	mock := &MockNorthwindExternalAccountRepositoryInterface{ctrl: ctrl}
+	mock.recorder = &MockNorthwindExternalAccountRepositoryInterfaceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockNorthwindExternalAccountRepositoryInterface) EXPECT() *MockNorthwindExternalAccountRepositoryInterfaceMockRecorder {
+	return m.recorder
+}
+
+// Create mocks base method.
+func (m *MockNorthwindExternalAccountRepositoryInterface) Create(account *models.NorthwindExternalAccount) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", account)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockNorthwindExternalAccountRepositoryInterfaceMockRecorder) Create(account interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockNorthwindExternalAccountRepositoryInterface)(nil).Create), account)
+}
+
+// FindByAccountAndRouting mocks base method.
+func (m *MockNorthwindExternalAccountRepositoryInterface) FindByAccountAndRouting(userID uuid.UUID, accountNumber, routingNumber string) (*models.NorthwindExternalAccount, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindByAccountAndRouting", userID, accountNumber, routingNumber)
+	ret0, _ := ret[0].(*models.NorthwindExternalAccount)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindByAccountAndRouting indicates an expected call of FindByAccountAndRouting.
+func (mr *MockNorthwindExternalAccountRepositoryInterfaceMockRecorder) FindByAccountAndRouting(userID, accountNumber, routingNumber interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByAccountAndRouting", reflect.TypeOf((*MockNorthwindExternalAccountRepositoryInterface)(nil).FindByAccountAndRouting), userID, accountNumber, routingNumber)
+}
+
+// GetByID mocks base method.
+func (m *MockNorthwindExternalAccountRepositoryInterface) GetByID(id uuid.UUID) (*models.NorthwindExternalAccount, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByID", id)
+	ret0, _ := ret[0].(*models.NorthwindExternalAccount)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByID indicates an expected call of GetByID.
+func (mr *MockNorthwindExternalAccountRepositoryInterfaceMockRecorder) GetByID(id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockNorthwindExternalAccountRepositoryInterface)(nil).GetByID), id)
+}
+
+// GetByUserID mocks base method.
+func (m *MockNorthwindExternalAccountRepositoryInterface) GetByUserID(userID uuid.UUID, offset, limit int) ([]models.NorthwindExternalAccount, int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByUserID", userID, offset, limit)
+	ret0, _ := ret[0].([]models.NorthwindExternalAccount)
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetByUserID indicates an expected call of GetByUserID.
+func (mr *MockNorthwindExternalAccountRepositoryInterfaceMockRecorder) GetByUserID(userID, offset, limit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByUserID", reflect.TypeOf((*MockNorthwindExternalAccountRepositoryInterface)(nil).GetByUserID), userID, offset, limit)
+}
+
+// Update mocks base method.
+func (m *MockNorthwindExternalAccountRepositoryInterface) Update(account *models.NorthwindExternalAccount) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", account)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockNorthwindExternalAccountRepositoryInterfaceMockRecorder) Update(account interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockNorthwindExternalAccountRepositoryInterface)(nil).Update), account)
+}
+
+// MockNorthwindTransferRepositoryInterface is a mock of NorthwindTransferRepositoryInterface interface.
+type MockNorthwindTransferRepositoryInterface struct {
+	ctrl     *gomock.Controller
+	recorder *MockNorthwindTransferRepositoryInterfaceMockRecorder
+}
+
+// MockNorthwindTransferRepositoryInterfaceMockRecorder is the mock recorder for MockNorthwindTransferRepositoryInterface.
+type MockNorthwindTransferRepositoryInterfaceMockRecorder struct {
+	mock *MockNorthwindTransferRepositoryInterface
+}
+
+// NewMockNorthwindTransferRepositoryInterface creates a new mock instance.
+func NewMockNorthwindTransferRepositoryInterface(ctrl *gomock.Controller) *MockNorthwindTransferRepositoryInterface {
+	mock := &MockNorthwindTransferRepositoryInterface{ctrl: ctrl}
+	mock.recorder = &MockNorthwindTransferRepositoryInterfaceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockNorthwindTransferRepositoryInterface) EXPECT() *MockNorthwindTransferRepositoryInterfaceMockRecorder {
+	return m.recorder
+}
+
+// Create mocks base method.
+func (m *MockNorthwindTransferRepositoryInterface) Create(transfer *models.NorthwindTransfer) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", transfer)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockNorthwindTransferRepositoryInterfaceMockRecorder) Create(transfer interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockNorthwindTransferRepositoryInterface)(nil).Create), transfer)
+}
+
+// GetByID mocks base method.
+func (m *MockNorthwindTransferRepositoryInterface) GetByID(id uuid.UUID) (*models.NorthwindTransfer, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByID", id)
+	ret0, _ := ret[0].(*models.NorthwindTransfer)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByID indicates an expected call of GetByID.
+func (mr *MockNorthwindTransferRepositoryInterfaceMockRecorder) GetByID(id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockNorthwindTransferRepositoryInterface)(nil).GetByID), id)
+}
+
+// GetByNorthwindTransferID mocks base method.
+func (m *MockNorthwindTransferRepositoryInterface) GetByNorthwindTransferID(nwID uuid.UUID) (*models.NorthwindTransfer, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByNorthwindTransferID", nwID)
+	ret0, _ := ret[0].(*models.NorthwindTransfer)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByNorthwindTransferID indicates an expected call of GetByNorthwindTransferID.
+func (mr *MockNorthwindTransferRepositoryInterfaceMockRecorder) GetByNorthwindTransferID(nwID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByNorthwindTransferID", reflect.TypeOf((*MockNorthwindTransferRepositoryInterface)(nil).GetByNorthwindTransferID), nwID)
+}
+
+// GetByUserID mocks base method.
+func (m *MockNorthwindTransferRepositoryInterface) GetByUserID(userID uuid.UUID, offset, limit int) ([]models.NorthwindTransfer, int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByUserID", userID, offset, limit)
+	ret0, _ := ret[0].([]models.NorthwindTransfer)
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetByUserID indicates an expected call of GetByUserID.
+func (mr *MockNorthwindTransferRepositoryInterfaceMockRecorder) GetByUserID(userID, offset, limit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByUserID", reflect.TypeOf((*MockNorthwindTransferRepositoryInterface)(nil).GetByUserID), userID, offset, limit)
+}
+
+// GetByUserIDWithFilters mocks base method.
+func (m *MockNorthwindTransferRepositoryInterface) GetByUserIDWithFilters(userID uuid.UUID, status, direction, transferType string, offset, limit int) ([]models.NorthwindTransfer, int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByUserIDWithFilters", userID, status, direction, transferType, offset, limit)
+	ret0, _ := ret[0].([]models.NorthwindTransfer)
+	ret1, _ := ret[1].(int64)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetByUserIDWithFilters indicates an expected call of GetByUserIDWithFilters.
+func (mr *MockNorthwindTransferRepositoryInterfaceMockRecorder) GetByUserIDWithFilters(userID, status, direction, transferType, offset, limit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByUserIDWithFilters", reflect.TypeOf((*MockNorthwindTransferRepositoryInterface)(nil).GetByUserIDWithFilters), userID, status, direction, transferType, offset, limit)
+}
+
+// GetPendingTransfers mocks base method.
+func (m *MockNorthwindTransferRepositoryInterface) GetPendingTransfers(limit int) ([]models.NorthwindTransfer, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPendingTransfers", limit)
+	ret0, _ := ret[0].([]models.NorthwindTransfer)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPendingTransfers indicates an expected call of GetPendingTransfers.
+func (mr *MockNorthwindTransferRepositoryInterfaceMockRecorder) GetPendingTransfers(limit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPendingTransfers", reflect.TypeOf((*MockNorthwindTransferRepositoryInterface)(nil).GetPendingTransfers), limit)
+}
+
+// Update mocks base method.
+func (m *MockNorthwindTransferRepositoryInterface) Update(transfer *models.NorthwindTransfer) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", transfer)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockNorthwindTransferRepositoryInterfaceMockRecorder) Update(transfer interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockNorthwindTransferRepositoryInterface)(nil).Update), transfer)
+}
+
+// MockRegulatorNotificationRepositoryInterface is a mock of RegulatorNotificationRepositoryInterface interface.
+type MockRegulatorNotificationRepositoryInterface struct {
+	ctrl     *gomock.Controller
+	recorder *MockRegulatorNotificationRepositoryInterfaceMockRecorder
+}
+
+// MockRegulatorNotificationRepositoryInterfaceMockRecorder is the mock recorder for MockRegulatorNotificationRepositoryInterface.
+type MockRegulatorNotificationRepositoryInterfaceMockRecorder struct {
+	mock *MockRegulatorNotificationRepositoryInterface
+}
+
+// NewMockRegulatorNotificationRepositoryInterface creates a new mock instance.
+func NewMockRegulatorNotificationRepositoryInterface(ctrl *gomock.Controller) *MockRegulatorNotificationRepositoryInterface {
+	mock := &MockRegulatorNotificationRepositoryInterface{ctrl: ctrl}
+	mock.recorder = &MockRegulatorNotificationRepositoryInterfaceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockRegulatorNotificationRepositoryInterface) EXPECT() *MockRegulatorNotificationRepositoryInterfaceMockRecorder {
+	return m.recorder
+}
+
+// Create mocks base method.
+func (m *MockRegulatorNotificationRepositoryInterface) Create(notification *models.RegulatorNotification) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", notification)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockRegulatorNotificationRepositoryInterfaceMockRecorder) Create(notification interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRegulatorNotificationRepositoryInterface)(nil).Create), notification)
+}
+
+// ExistsForTransferAndStatus mocks base method.
+func (m *MockRegulatorNotificationRepositoryInterface) ExistsForTransferAndStatus(transferID uuid.UUID, terminalStatus string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExistsForTransferAndStatus", transferID, terminalStatus)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ExistsForTransferAndStatus indicates an expected call of ExistsForTransferAndStatus.
+func (mr *MockRegulatorNotificationRepositoryInterfaceMockRecorder) ExistsForTransferAndStatus(transferID, terminalStatus interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExistsForTransferAndStatus", reflect.TypeOf((*MockRegulatorNotificationRepositoryInterface)(nil).ExistsForTransferAndStatus), transferID, terminalStatus)
+}
+
+// GetByID mocks base method.
+func (m *MockRegulatorNotificationRepositoryInterface) GetByID(id uuid.UUID) (*models.RegulatorNotification, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByID", id)
+	ret0, _ := ret[0].(*models.RegulatorNotification)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByID indicates an expected call of GetByID.
+func (mr *MockRegulatorNotificationRepositoryInterfaceMockRecorder) GetByID(id interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockRegulatorNotificationRepositoryInterface)(nil).GetByID), id)
+}
+
+// GetPendingNotifications mocks base method.
+func (m *MockRegulatorNotificationRepositoryInterface) GetPendingNotifications(limit int) ([]models.RegulatorNotification, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPendingNotifications", limit)
+	ret0, _ := ret[0].([]models.RegulatorNotification)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPendingNotifications indicates an expected call of GetPendingNotifications.
+func (mr *MockRegulatorNotificationRepositoryInterfaceMockRecorder) GetPendingNotifications(limit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPendingNotifications", reflect.TypeOf((*MockRegulatorNotificationRepositoryInterface)(nil).GetPendingNotifications), limit)
+}
+
+// Update mocks base method.
+func (m *MockRegulatorNotificationRepositoryInterface) Update(notification *models.RegulatorNotification) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", notification)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Update indicates an expected call of Update.
+func (mr *MockRegulatorNotificationRepositoryInterfaceMockRecorder) Update(notification interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockRegulatorNotificationRepositoryInterface)(nil).Update), notification)
+}
+
+// MockRegulatorNotificationAttemptRepositoryInterface is a mock of RegulatorNotificationAttemptRepositoryInterface interface.
+type MockRegulatorNotificationAttemptRepositoryInterface struct {
+	ctrl     *gomock.Controller
+	recorder *MockRegulatorNotificationAttemptRepositoryInterfaceMockRecorder
+}
+
+// MockRegulatorNotificationAttemptRepositoryInterfaceMockRecorder is the mock recorder for MockRegulatorNotificationAttemptRepositoryInterface.
+type MockRegulatorNotificationAttemptRepositoryInterfaceMockRecorder struct {
+	mock *MockRegulatorNotificationAttemptRepositoryInterface
+}
+
+// NewMockRegulatorNotificationAttemptRepositoryInterface creates a new mock instance.
+func NewMockRegulatorNotificationAttemptRepositoryInterface(ctrl *gomock.Controller) *MockRegulatorNotificationAttemptRepositoryInterface {
+	mock := &MockRegulatorNotificationAttemptRepositoryInterface{ctrl: ctrl}
+	mock.recorder = &MockRegulatorNotificationAttemptRepositoryInterfaceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockRegulatorNotificationAttemptRepositoryInterface) EXPECT() *MockRegulatorNotificationAttemptRepositoryInterfaceMockRecorder {
+	return m.recorder
+}
+
+// Create mocks base method.
+func (m *MockRegulatorNotificationAttemptRepositoryInterface) Create(attempt *models.RegulatorNotificationAttempt) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", attempt)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockRegulatorNotificationAttemptRepositoryInterfaceMockRecorder) Create(attempt interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRegulatorNotificationAttemptRepositoryInterface)(nil).Create), attempt)
+}
+
+// GetByNotificationID mocks base method.
+func (m *MockRegulatorNotificationAttemptRepositoryInterface) GetByNotificationID(notificationID uuid.UUID) ([]models.RegulatorNotificationAttempt, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetByNotificationID", notificationID)
+	ret0, _ := ret[0].([]models.RegulatorNotificationAttempt)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetByNotificationID indicates an expected call of GetByNotificationID.
+func (mr *MockRegulatorNotificationAttemptRepositoryInterfaceMockRecorder) GetByNotificationID(notificationID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByNotificationID", reflect.TypeOf((*MockRegulatorNotificationAttemptRepositoryInterface)(nil).GetByNotificationID), notificationID)
 }

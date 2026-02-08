@@ -11,6 +11,7 @@ import (
 
 	"github.com/array/banking-api/internal/dto"
 	"github.com/array/banking-api/internal/models"
+	"github.com/array/banking-api/internal/repositories"
 	"github.com/array/banking-api/internal/repositories/repository_mocks"
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/golang/mock/gomock"
@@ -22,7 +23,6 @@ import (
 
 type TransactionHandlerTestSuite struct {
 	suite.Suite
-	handler             *TransactionHandler
 	echo                *echo.Echo
 	accountID           uuid.UUID
 	userID              uuid.UUID
@@ -650,4 +650,145 @@ func (s *TransactionHandlerTestSuite) TestValidateTransactionFilters_ValidInputs
 	s.Contains(validStatuses, filters.Status)
 
 	s.True(models.IsValidCategory(filters.Category))
+}
+
+// GetTransaction tests
+func (s *TransactionHandlerTestSuite) TestGetTransaction_Success() {
+	transactionID := uuid.New()
+	account := &models.Account{
+		ID:            s.accountID,
+		UserID:        s.userID,
+		AccountType:   models.AccountTypeChecking,
+		AccountNumber: "1234567890",
+		Balance:       decimal.NewFromFloat(1000),
+		Status:        models.AccountStatusActive,
+	}
+	transaction := &models.Transaction{
+		ID:              transactionID,
+		AccountID:       s.accountID,
+		Amount:          decimal.NewFromFloat(50),
+		TransactionType: models.TransactionTypeDebit,
+		Description:     "test",
+		Status:          models.TransactionStatusCompleted,
+		BalanceBefore:   decimal.NewFromFloat(1000),
+		BalanceAfter:    decimal.NewFromFloat(950),
+	}
+	s.mockAccountRepo.EXPECT().GetByID(s.accountID).Return(account, nil)
+	s.mockTransactionRepo.EXPECT().GetByID(transactionID).Return(transaction, nil)
+
+	handler := NewTransactionHandler(s.mockTransactionRepo, s.mockAccountRepo)
+	url := fmt.Sprintf("/api/v1/accounts/%s/transactions/%s", s.accountID, transactionID)
+	req := httptest.NewRequest(http.MethodGet, url, nil)
+	rec := httptest.NewRecorder()
+	c := s.echo.NewContext(req, rec)
+	c.SetParamNames("accountId", "id")
+	c.SetParamValues(s.accountID.String(), transactionID.String())
+	c.Set("user_id", s.userID)
+
+	err := handler.GetTransaction(c)
+	s.NoError(err)
+	s.Equal(http.StatusOK, rec.Code)
+}
+
+func (s *TransactionHandlerTestSuite) TestGetTransaction_InvalidAccountID() {
+	handler := NewTransactionHandler(s.mockTransactionRepo, s.mockAccountRepo)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/accounts/invalid/transactions/"+uuid.New().String(), nil)
+	rec := httptest.NewRecorder()
+	c := s.echo.NewContext(req, rec)
+	c.SetParamNames("accountId", "id")
+	c.SetParamValues("invalid", uuid.New().String())
+	c.Set("user_id", s.userID)
+
+	err := handler.GetTransaction(c)
+	s.NoError(err)
+	s.Equal(http.StatusUnprocessableEntity, rec.Code)
+}
+
+func (s *TransactionHandlerTestSuite) TestGetTransaction_InvalidTransactionID() {
+	account := &models.Account{
+		ID:      s.accountID,
+		UserID:  s.userID,
+		Balance: decimal.NewFromFloat(1000),
+		Status:  models.AccountStatusActive,
+	}
+	s.mockAccountRepo.EXPECT().GetByID(s.accountID).Return(account, nil)
+
+	handler := NewTransactionHandler(s.mockTransactionRepo, s.mockAccountRepo)
+	url := fmt.Sprintf("/api/v1/accounts/%s/transactions/not-a-uuid", s.accountID)
+	req := httptest.NewRequest(http.MethodGet, url, nil)
+	rec := httptest.NewRecorder()
+	c := s.echo.NewContext(req, rec)
+	c.SetParamNames("accountId", "id")
+	c.SetParamValues(s.accountID.String(), "not-a-uuid")
+	c.Set("user_id", s.userID)
+
+	err := handler.GetTransaction(c)
+	s.NoError(err)
+	s.Equal(http.StatusBadRequest, rec.Code)
+}
+
+func (s *TransactionHandlerTestSuite) TestGetTransaction_AccountNotFound() {
+	s.mockAccountRepo.EXPECT().GetByID(s.accountID).Return(nil, repositories.ErrAccountNotFound)
+
+	handler := NewTransactionHandler(s.mockTransactionRepo, s.mockAccountRepo)
+	url := fmt.Sprintf("/api/v1/accounts/%s/transactions/%s", s.accountID, uuid.New())
+	req := httptest.NewRequest(http.MethodGet, url, nil)
+	rec := httptest.NewRecorder()
+	c := s.echo.NewContext(req, rec)
+	c.SetParamNames("accountId", "id")
+	c.SetParamValues(s.accountID.String(), uuid.New().String())
+	c.Set("user_id", s.userID)
+
+	err := handler.GetTransaction(c)
+	s.NoError(err)
+	s.Equal(http.StatusNotFound, rec.Code)
+}
+
+func (s *TransactionHandlerTestSuite) TestGetTransaction_TransactionNotFound() {
+	account := &models.Account{
+		ID:      s.accountID,
+		UserID:  s.userID,
+		Balance: decimal.NewFromFloat(1000),
+		Status:  models.AccountStatusActive,
+	}
+	txID := uuid.New()
+	s.mockAccountRepo.EXPECT().GetByID(s.accountID).Return(account, nil)
+	s.mockTransactionRepo.EXPECT().GetByID(txID).Return(nil, repositories.ErrTransactionNotFound)
+
+	handler := NewTransactionHandler(s.mockTransactionRepo, s.mockAccountRepo)
+	url := fmt.Sprintf("/api/v1/accounts/%s/transactions/%s", s.accountID, txID)
+	req := httptest.NewRequest(http.MethodGet, url, nil)
+	rec := httptest.NewRecorder()
+	c := s.echo.NewContext(req, rec)
+	c.SetParamNames("accountId", "id")
+	c.SetParamValues(s.accountID.String(), txID.String())
+	c.Set("user_id", s.userID)
+
+	err := handler.GetTransaction(c)
+	s.NoError(err)
+	s.Equal(http.StatusNotFound, rec.Code)
+}
+
+func (s *TransactionHandlerTestSuite) TestGetTransaction_ForbiddenAccount() {
+	otherUserID := uuid.New()
+	account := &models.Account{
+		ID:      s.accountID,
+		UserID:  otherUserID,
+		Balance: decimal.NewFromFloat(1000),
+		Status:  models.AccountStatusActive,
+	}
+	s.mockAccountRepo.EXPECT().GetByID(s.accountID).Return(account, nil)
+
+	handler := NewTransactionHandler(s.mockTransactionRepo, s.mockAccountRepo)
+	url := fmt.Sprintf("/api/v1/accounts/%s/transactions/%s", s.accountID, uuid.New())
+	req := httptest.NewRequest(http.MethodGet, url, nil)
+	rec := httptest.NewRecorder()
+	c := s.echo.NewContext(req, rec)
+	c.SetParamNames("accountId", "id")
+	c.SetParamValues(s.accountID.String(), uuid.New().String())
+	c.Set("user_id", s.userID)
+
+	err := handler.GetTransaction(c)
+	s.NoError(err)
+	s.Equal(http.StatusForbidden, rec.Code)
 }

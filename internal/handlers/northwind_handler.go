@@ -13,8 +13,8 @@ import (
 
 // NorthwindHandler handles NorthWind integration endpoints
 type NorthwindHandler struct {
-	client     *northwind.Client
-	accountSvc *services.NorthwindAccountService
+	client      *northwind.Client
+	accountSvc  *services.NorthwindAccountService
 	transferSvc *services.NorthwindTransferService
 }
 
@@ -25,8 +25,8 @@ func NewNorthwindHandler(
 	transferSvc *services.NorthwindTransferService,
 ) *NorthwindHandler {
 	return &NorthwindHandler{
-		client:     client,
-		accountSvc: accountSvc,
+		client:      client,
+		accountSvc:  accountSvc,
 		transferSvc: transferSvc,
 	}
 }

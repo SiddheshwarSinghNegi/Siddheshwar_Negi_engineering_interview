@@ -232,3 +232,127 @@ func (s *UserRepositorySuite) TestUserRepository_UpdatePasswordHash() {
 	err = s.repo.UpdatePasswordHash(uuid.New(), "new_hash")
 	s.Equal(ErrUserNotFound, err)
 }
+
+func (s *UserRepositorySuite) TestUserRepository_GetByID() {
+	user := &models.User{
+		Email:        "getbyid@example.com",
+		PasswordHash: "hash",
+		FirstName:    "First",
+		LastName:     "Last",
+		Role:         models.RoleCustomer,
+	}
+	s.NoError(s.repo.Create(user))
+
+	found, err := s.repo.GetByID(user.ID)
+	s.NoError(err)
+	s.Equal(user.ID, found.ID)
+	s.Equal(user.Email, found.Email)
+
+	_, err = s.repo.GetByID(uuid.New())
+	s.Equal(ErrUserNotFound, err)
+}
+
+func (s *UserRepositorySuite) TestUserRepository_GetByEmailExcluding() {
+	user := &models.User{
+		Email:        "exclude@example.com",
+		PasswordHash: "hash",
+		FirstName:    "A",
+		LastName:     "B",
+		Role:         models.RoleCustomer,
+	}
+	s.NoError(s.repo.Create(user))
+
+	// Excluding a different ID returns the user
+	found, err := s.repo.GetByEmailExcluding("exclude@example.com", uuid.New())
+	s.NoError(err)
+	s.Equal(user.ID, found.ID)
+
+	// Excluding this user's ID returns not found
+	_, err = s.repo.GetByEmailExcluding("exclude@example.com", user.ID)
+	s.Error(err)
+	s.Equal(ErrUserNotFound, err)
+}
+
+func (s *UserRepositorySuite) TestUserRepository_UpdateFields() {
+	user := &models.User{
+		Email:        "updatefields@example.com",
+		PasswordHash: "hash",
+		FirstName:    "Old",
+		LastName:     "Name",
+		Role:         models.RoleCustomer,
+	}
+	s.NoError(s.repo.Create(user))
+
+	err := s.repo.UpdateFields(user.ID, map[string]interface{}{"first_name": "NewFirst"})
+	s.NoError(err)
+
+	found, _ := s.repo.GetByID(user.ID)
+	s.Equal("NewFirst", found.FirstName)
+}
+
+func (s *UserRepositorySuite) TestUserRepository_UpdateEmail() {
+	user := &models.User{
+		Email:        "oldemail@example.com",
+		PasswordHash: "hash",
+		FirstName:    "A",
+		LastName:     "B",
+		Role:         models.RoleCustomer,
+	}
+	s.NoError(s.repo.Create(user))
+
+	err := s.repo.UpdateEmail(user.ID, "newemail@example.com")
+	s.NoError(err)
+
+	found, _ := s.repo.GetByID(user.ID)
+	s.Equal("newemail@example.com", found.Email)
+}
+
+func (s *UserRepositorySuite) TestUserRepository_ResetFailedLoginAttempts() {
+	user := &models.User{
+		Email:               "reset@example.com",
+		PasswordHash:        "hash",
+		FirstName:           "A",
+		LastName:            "B",
+		Role:                models.RoleCustomer,
+		FailedLoginAttempts: 3,
+	}
+	s.NoError(s.repo.Create(user))
+
+	err := s.repo.ResetFailedLoginAttempts(user.ID)
+	s.NoError(err)
+
+	found, _ := s.repo.GetByID(user.ID)
+	s.Equal(0, found.FailedLoginAttempts)
+}
+
+func (s *UserRepositorySuite) TestUserRepository_SearchUsers() {
+	user := &models.User{
+		Email:        "searchable@example.com",
+		PasswordHash: "hash",
+		FirstName:    "Search",
+		LastName:     "User",
+		Role:         models.RoleCustomer,
+	}
+	s.NoError(s.repo.Create(user))
+
+	// SearchType "email" does exact match (LOWER(email) = LOWER(query))
+	results, total, err := s.repo.SearchUsers(UserSearchCriteria{Query: "searchable@example.com", SearchType: "email"}, 0, 10)
+	s.NoError(err)
+	s.GreaterOrEqual(int(total), 1)
+	s.GreaterOrEqual(len(results), 1)
+}
+
+func (s *UserRepositorySuite) TestUserRepository_CountAccountsByUserID() {
+	user := &models.User{
+		Email:        "countacct@example.com",
+		PasswordHash: "hash",
+		FirstName:    "A",
+		LastName:     "B",
+		Role:         models.RoleCustomer,
+	}
+	s.NoError(s.repo.Create(user))
+
+	count, err := s.repo.CountAccountsByUserID(user.ID)
+	s.NoError(err)
+	s.Equal(int64(0), count)
+}

@@ -12,7 +12,7 @@ import (
 func TestSecurityHeaders(t *testing.T) {
 	e := echo.New()
 	middleware := SecurityHeaders()
-	
+
 	handler := middleware(func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 	})
@@ -27,7 +27,7 @@ func TestSecurityHeaders(t *testing.T) {
 
 	// Verify all security headers are set
 	headers := rec.Header()
-	
+
 	// OWASP security headers
 	assert.Equal(t, "nosniff", headers.Get("X-Content-Type-Options"))
 	assert.Equal(t, "DENY", headers.Get("X-Frame-Options"))
@@ -36,7 +36,7 @@ func TestSecurityHeaders(t *testing.T) {
 	assert.Equal(t, "default-src 'self'", headers.Get("Content-Security-Policy"))
 	assert.Equal(t, "strict-origin-when-cross-origin", headers.Get("Referrer-Policy"))
 	assert.Equal(t, "geolocation=(), microphone=(), camera=()", headers.Get("Permissions-Policy"))
-	
+
 	// Cache control headers
 	assert.Equal(t, "no-store, no-cache, must-revalidate, private", headers.Get("Cache-Control"))
 	assert.Equal(t, "no-cache", headers.Get("Pragma"))
@@ -46,7 +46,7 @@ func TestSecurityHeaders(t *testing.T) {
 func TestSecurityHeadersNextHandlerCalled(t *testing.T) {
 	e := echo.New()
 	middleware := SecurityHeaders()
-	
+
 	nextCalled := false
 	handler := middleware(func(c echo.Context) error {
 		nextCalled = true

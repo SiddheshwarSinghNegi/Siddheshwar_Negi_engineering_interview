@@ -53,12 +53,12 @@ func (r *RegulatorNotification) BeforeUpdate(tx *gorm.DB) error {
 
 // RegulatorNotificationAttempt records a single delivery attempt for audit proof
 type RegulatorNotificationAttempt struct {
-	ID             uuid.UUID  `gorm:"type:uuid;primary_key" json:"id"`
-	NotificationID uuid.UUID  `gorm:"type:uuid;not null" json:"notification_id"`
-	AttemptedAt    time.Time  `gorm:"not null" json:"attempted_at"`
-	HTTPStatus     *int       `json:"http_status,omitempty"`
-	Error          *string    `json:"error,omitempty"`
-	ResponseBody   *string    `gorm:"type:text" json:"response_body,omitempty"`
+	ID             uuid.UUID `gorm:"type:uuid;primary_key" json:"id"`
+	NotificationID uuid.UUID `gorm:"type:uuid;not null" json:"notification_id"`
+	AttemptedAt    time.Time `gorm:"not null" json:"attempted_at"`
+	HTTPStatus     *int      `json:"http_status,omitempty"`
+	Error          *string   `json:"error,omitempty"`
+	ResponseBody   *string   `gorm:"type:text" json:"response_body,omitempty"`
 }
 
 // TableName returns the table name for RegulatorNotificationAttempt
@@ -79,13 +79,13 @@ func (r *RegulatorNotificationAttempt) BeforeCreate(tx *gorm.DB) error {
 
 // RegulatorWebhookPayload is the payload sent to the regulator webhook
 type RegulatorWebhookPayload struct {
-	EventID            string  `json:"event_id"`
-	TransferID         string  `json:"transfer_id"`
-	NorthwindTransferID string `json:"northwind_transfer_id"`
-	Status             string  `json:"status"`
-	Amount             float64 `json:"amount"`
-	Currency           string  `json:"currency"`
-	Direction          string  `json:"direction"`
-	TransferType       string  `json:"transfer_type"`
-	Timestamp          string  `json:"timestamp"`
+	EventID             string  `json:"event_id"`
+	TransferID          string  `json:"transfer_id"`
+	NorthwindTransferID string  `json:"northwind_transfer_id"`
+	Status              string  `json:"status"`
+	Amount              float64 `json:"amount"`
+	Currency            string  `json:"currency"`
+	Direction           string  `json:"direction"`
+	TransferType        string  `json:"transfer_type"`
+	Timestamp           string  `json:"timestamp"`
 }

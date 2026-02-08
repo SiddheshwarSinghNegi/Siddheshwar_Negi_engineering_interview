@@ -199,7 +199,7 @@ When running with Docker and `SEED_DATABASE=true`, the following test users are 
 
 ```bash
 # Login to get JWT token
-curl -X POST http://localhost:8080/api/v1/auth/login \
+curl.exe -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "john.doe@example.com",
@@ -214,9 +214,8 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
 #   "expiresAt": "2025-10-24T13:00:00Z"
 # }
 
-# Get user profile
-curl http://localhost:8080/api/v1/auth/me \
-  -H "Authorization: Bearer <your-token-here>"
+# Get current user profile (use accessToken from login response)
+curl.exe -s http://localhost:8080/api/v1/customers/me -H "Authorization: Bearer <your-token-here>"
 ```
 
 ---
@@ -621,18 +620,39 @@ DB_PORT=5432
 DB_USER=arraybank
 DB_PASSWORD=arraybank_dev_password
 DB_NAME=arraybank_dev
-DB_SSLMODE=disable
+DB_SSL_MODE=disable
 
-# JWT
-JWT_SECRET=your-secret-key-here
-JWT_EXPIRATION=3600
+# JWT (RSA keypair; base64-encoded PEM. See .env.example for generation.)
+JWT_PRIVATE_KEY=<base64-encoded-private-pem>
+JWT_PUBLIC_KEY=<base64-encoded-public-pem>
+JWT_ISSUER=banking-api
+JWT_ACCESS_TOKEN_DURATION=24h
+JWT_REFRESH_TOKEN_DURATION=168h
 
 # Features
 AUTO_MIGRATE=true
 SEED_DATABASE=true
 
-# CORS
-CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
+# Server
+SERVER_READ_TIMEOUT=30s
+SERVER_WRITE_TIMEOUT=30s
+
+# CORS (app reads CORS_ALLOW_ORIGINS)
+CORS_ALLOW_ORIGINS=http://localhost:3000,http://localhost:8080
+
+# Rate limiting
+RATE_LIMIT_PER_SECOND=10
+RATE_LIMIT_BURST=20
+
+# NorthWind Bank Integration
+NORTHWIND_BASE_URL=https://northwind.dev.array.io
+NORTHWIND_API_KEY=<your-northwind-api-key>
+NORTHWIND_POLL_INTERVAL_SECONDS=10
+
+# Regulator Webhook
+REGULATOR_WEBHOOK_URL=http://regulator:9000/webhook
+REGULATOR_RETRY_INITIAL_SECONDS=2
+REGULATOR_RETRY_MAX_SECONDS=60
 ```
 
 ### Code Quality
@@ -700,15 +720,23 @@ internal/
 
 ### Writing Tests
 
-Example test structure:
+Handler tests should use a **table-driven** style: one test function per handler method, a slice of test cases, and mocks created in the test. New tests should follow this pattern.
+
+Example test structure (uses real `AccountHandler` constructor and mocks):
 
 ```go
 func TestAccountHandler_CreateAccount(t *testing.T) {
-    // Setup
-    mockService := mocks.NewMockAccountService(ctrl)
-    handler := handlers.NewAccountHandler(mockService)
+    ctrl := gomock.NewController(t)
+    defer ctrl.Finish()
 
-    // Test cases
+    mockAccountService := service_mocks.NewMockAccountServiceInterface(ctrl)
+    mockAuditLogger := service_mocks.NewMockAuditLoggerInterface(ctrl)
+    mockMetrics := service_mocks.NewMockMetricsRecorderInterface(ctrl)
+    handler := NewAccountHandler(mockAccountService, mockAuditLogger, mockMetrics)
+
+    e := echo.New()
+    e.Validator = validation.EchoValidator()
+
     tests := []struct {
         name           string
         requestBody    string
@@ -716,22 +744,40 @@ func TestAccountHandler_CreateAccount(t *testing.T) {
         expectedCode   string
     }{
         {
-            name: "successful account creation",
-            requestBody: `{"accountType":"checking"}`,
+            name:           "successful account creation",
+            requestBody:    `{"accountType":"checking"}`,
             expectedStatus: 201,
         },
         {
-            name: "invalid account type",
-            requestBody: `{"accountType":"invalid"}`,
+            name:           "invalid account type",
+            requestBody:    `{"accountType":"invalid"}`,
             expectedStatus: 400,
-            expectedCode: "VALIDATION_001",
+            expectedCode:   "VALIDATION_001",
         },
     }
 
-    // Run tests
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
-            // Test implementation
+            req := httptest.NewRequest(http.MethodPost, "/accounts", strings.NewReader(tt.requestBody))
+            req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+            rec := httptest.NewRecorder()
+            c := e.NewContext(req, rec)
+            c.Set("user_id", uuid.New())
+            c.Set("user_role", "user")
+
+            if tt.expectedStatus == 201 {
+                mockAccountService.EXPECT().CreateAccount(gomock.Any(), "checking", gomock.Any()).Return(&models.Account{ID: uuid.New(), AccountNumber: "1012345678", AccountType: "checking", Status: "active"}, nil)
+            }
+
+            err := handler.CreateAccount(c)
+            require.NoError(t, err)
+            require.Equal(t, tt.expectedStatus, rec.Code)
+
+            if tt.expectedCode != "" {
+                var errResp ErrorResponse
+                require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &errResp))
+                require.Equal(t, tt.expectedCode, errResp.Error.Code)
+            }
         })
     }
 }
@@ -1021,3 +1067,27 @@ For full documentation, architecture details, API endpoints, compliance notes, a
 - Exponential backoff retries with full audit trail in PostgreSQL
 - Background polling and retry workers with graceful shutdown
 - Postman collection for end-to-end testing (`postman/NorthWind-Integration.postman_collection.json`)
+
+### How to verify NorthWind features
+
+You can confirm that Authentication, Transfer Funds, and Notify Regulators are working as follows. Prerequisites: API running (e.g. `http://localhost:8080`), `NORTHWIND_API_KEY` set in `.env`, and seed data loaded (e.g. **john.doe@example.com** / **Password123!**).
+
+**1. Authentication**
+
+- Login to get a JWT: `curl.exe -s -X POST http://localhost:8080/api/v1/auth/login -H "Content-Type: application/json" -d "{\"email\":\"john.doe@example.com\",\"password\":\"Password123!\"}"` (or use a `login.json` file with `-d "@login.json"` on Windows).
+- With the returned `accessToken`, call a protected NorthWind endpoint: `curl.exe -s http://localhost:8080/api/v1/northwind/health -H "Authorization: Bearer <accessToken>"`. Expect 200 and NorthWind health data (or an error if the API key is missing/invalid).
+- Without a token: `curl.exe -s -w "\n%{http_code}" http://localhost:8080/api/v1/northwind/health` should return 401.
+
+**2. Transfer funds**
+
+- With a valid JWT: call `GET /api/v1/northwind/health` or `GET /api/v1/northwind/bank` to confirm NorthWind connectivity.
+- Register an external account: `POST /api/v1/northwind/external-accounts/validate-and-register` (body must match NorthWind sandbox; see [NORTHWIND_README.md](NORTHWIND_README.md)).
+- Create a transfer: `POST /api/v1/northwind/transfers` with required fields (amount, currency, direction, transfer_type, reference_number, source_account, destination_account). Expect 201 and a transfer in `pending` (or similar).
+- List and get transfer: `GET /api/v1/northwind/transfers`, `GET /api/v1/northwind/transfers/:id`. After the background poller runs (default every 10s), status should update to a terminal state (e.g. `completed` or `failed`).
+
+**3. Notify regulators**
+
+- After a transfer reaches a terminal state, check the database for proof of notification and delivery attempts:
+  - `SELECT id, transfer_id, terminal_status, delivered, attempt_count, created_at FROM regulator_notifications ORDER BY created_at DESC LIMIT 10;`
+  - `SELECT notification_id, http_status, error_message, attempted_at FROM regulator_notification_attempts ORDER BY attempted_at DESC LIMIT 20;`
+- Optional: run a local webhook receiver (e.g. on port 19999), set `REGULATOR_WEBHOOK_URL=http://localhost:19999/webhook`, then trigger a terminal transfer to see the POST and `delivered=true`. To test retries, use an unreachable URL and confirm rows in `regulator_notification_attempts` and backoff behavior. See [NORTHWIND_README.md](NORTHWIND_README.md) (e.g. "Simulating Regulator Downtime") for payload format and receiver examples.

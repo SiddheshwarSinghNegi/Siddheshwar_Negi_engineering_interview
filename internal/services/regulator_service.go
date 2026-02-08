@@ -28,7 +28,7 @@ type RegulatorService struct {
 	logger              *slog.Logger
 }
 
-// NewRegulatorService creates a new regulator service
+// NewRegulatorService creates a new regulator service. If httpClient is nil, a default client with 10s timeout is used (allows tests to inject httptest server client).
 func NewRegulatorService(
 	webhookURL string,
 	retryInitialSeconds int,
@@ -36,17 +36,19 @@ func NewRegulatorService(
 	notifRepo repositories.RegulatorNotificationRepositoryInterface,
 	attemptRepo repositories.RegulatorNotificationAttemptRepositoryInterface,
 	logger *slog.Logger,
+	httpClient *http.Client,
 ) *RegulatorService {
+	if httpClient == nil {
+		httpClient = &http.Client{Timeout: 10 * time.Second}
+	}
 	return &RegulatorService{
 		webhookURL:          webhookURL,
 		retryInitialSeconds: retryInitialSeconds,
 		retryMaxSeconds:     retryMaxSeconds,
 		notifRepo:           notifRepo,
 		attemptRepo:         attemptRepo,
-		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
-		},
-		logger: logger,
+		httpClient:          httpClient,
+		logger:              logger,
 	}
 }
 
@@ -121,9 +123,14 @@ func (s *RegulatorService) StartRetryLoop(ctx context.Context) {
 			s.logger.Info("Regulator retry service stopping")
 			return
 		case <-ticker.C:
-			s.retryPendingNotifications(ctx)
+			s.RetryOnce(ctx)
 		}
 	}
+}
+
+// RetryOnce runs one retry cycle for pending notifications. Used by the unified worker scheduler.
+func (s *RegulatorService) RetryOnce(ctx context.Context) {
+	s.retryPendingNotifications(ctx)
 }
 
 func (s *RegulatorService) retryPendingNotifications(ctx context.Context) {

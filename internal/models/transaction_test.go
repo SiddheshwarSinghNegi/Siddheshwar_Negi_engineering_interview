@@ -159,7 +159,8 @@ func TestTransaction_Validate(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := &tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.transaction.Validate()
 			if tt.wantErr {
@@ -219,7 +220,7 @@ func TestTransaction_Complete(t *testing.T) {
 
 	assert.Equal(t, TransactionStatusCompleted, txn.Status)
 	assert.NotNil(t, txn.ProcessedAt)
-	assert.True(t, time.Now().Sub(*txn.ProcessedAt) < time.Second)
+	assert.True(t, time.Since(*txn.ProcessedAt) < time.Second)
 }
 
 func TestTransaction_Fail(t *testing.T) {
@@ -231,7 +232,7 @@ func TestTransaction_Fail(t *testing.T) {
 
 	assert.Equal(t, TransactionStatusFailed, txn.Status)
 	assert.NotNil(t, txn.ProcessedAt)
-	assert.True(t, time.Now().Sub(*txn.ProcessedAt) < time.Second)
+	assert.True(t, time.Since(*txn.ProcessedAt) < time.Second)
 }
 
 func TestTransaction_Reverse(t *testing.T) {
@@ -243,7 +244,7 @@ func TestTransaction_Reverse(t *testing.T) {
 
 	assert.Equal(t, TransactionStatusReversed, txn.Status)
 	assert.NotNil(t, txn.ProcessedAt)
-	assert.True(t, time.Now().Sub(*txn.ProcessedAt) < time.Second)
+	assert.True(t, time.Since(*txn.ProcessedAt) < time.Second)
 }
 
 func TestIsValidTransactionType(t *testing.T) {
@@ -294,11 +295,11 @@ func TestGenerateTransactionReference(t *testing.T) {
 		assert.NotEmpty(t, ref)
 		assert.True(t, len(ref) > 10)
 		assert.Contains(t, ref, "TXN-")
-		
+
 		// Check uniqueness
 		assert.False(t, refs[ref], "Duplicate reference generated")
 		refs[ref] = true
-		
+
 		// Small delay to ensure timestamp differences
 		time.Sleep(time.Millisecond)
 	}

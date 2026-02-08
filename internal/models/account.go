@@ -52,7 +52,6 @@ type Account struct {
 	// Associations
 	User         User          `gorm:"foreignKey:UserID" json:"-"`
 	Transactions []Transaction `gorm:"foreignKey:AccountID" json:"-"`
-	AuditLogs    []AuditLog    `gorm:"foreignKey:ResourceID" json:"-"`
 }
 
 // BeforeCreate hook for Account
@@ -261,7 +260,6 @@ func GenerateAccountNumber(accountType string) string {
 		return ""
 	}
 
-	rand.Seed(time.Now().UnixNano())
 	middle := fmt.Sprintf("%02d", rand.Intn(100))
 
 	// In production, this would be from a database sequence

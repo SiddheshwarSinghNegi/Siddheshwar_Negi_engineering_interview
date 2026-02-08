@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"log/slog"
 	"testing"
 	"time"
@@ -75,7 +76,7 @@ func (s *AccountServiceSuite) TestCreateAccount_WithInitialDeposit() {
 	s.accountRepo.EXPECT().ExistsForUser(s.testUserID, "checking").Return(false, nil)
 	s.accountRepo.EXPECT().GenerateUniqueAccountNumber("checking").Return("1012345678", nil)
 	s.accountRepo.EXPECT().CreateWithTransaction(gomock.Any(), gomock.Any()).DoAndReturn(
-		func(account *models.Account, transactions []models.Transaction) error {
+		func(account *models.Account, transactions []*models.Transaction) error {
 			account.ID = s.testAccountID
 			account.CreatedAt = s.testTime
 			account.UpdatedAt = s.testTime
@@ -104,7 +105,7 @@ func (s *AccountServiceSuite) TestCreateAccount_WithoutInitialDeposit() {
 	s.accountRepo.EXPECT().ExistsForUser(s.testUserID, "savings").Return(false, nil)
 	s.accountRepo.EXPECT().GenerateUniqueAccountNumber("savings").Return("2012345679", nil)
 	s.accountRepo.EXPECT().CreateWithTransaction(gomock.Any(), gomock.Any()).DoAndReturn(
-		func(account *models.Account, transactions []models.Transaction) error {
+		func(account *models.Account, transactions []*models.Transaction) error {
 			account.ID = s.testAccountID
 			account.CreatedAt = s.testTime
 			account.UpdatedAt = s.testTime
@@ -523,4 +524,372 @@ func (s *AccountServiceSuite) TestCloseAccount_Unauthorized() {
 	err := s.service.CloseAccount(s.testAccountID, s.testUserID)
 	s.Error(err)
 	s.Equal(ErrUnauthorized, err)
+}
+
+// Test UpdateAccountStatus
+func (s *AccountServiceSuite) TestUpdateAccountStatus_Active() {
+	account := &models.Account{
+		ID:            s.testAccountID,
+		UserID:        s.testUserID,
+		AccountNumber: "1012345678",
+		AccountType:   "checking",
+		Balance:       decimal.NewFromFloat(500),
+		Status:        "inactive",
+	}
+	s.accountRepo.EXPECT().GetByID(s.testAccountID).Return(account, nil)
+	s.accountRepo.EXPECT().Update(gomock.Any()).Return(nil)
+	s.auditRepo.EXPECT().Create(gomock.Any()).Return(nil)
+
+	result, err := s.service.UpdateAccountStatus(s.testAccountID, &s.testUserID, models.AccountStatusActive)
+	s.NoError(err)
+	s.NotNil(result)
+	s.Equal(models.AccountStatusActive, result.Status)
+}
+
+func (s *AccountServiceSuite) TestUpdateAccountStatus_Inactive() {
+	account := &models.Account{
+		ID:            s.testAccountID,
+		UserID:        s.testUserID,
+		AccountNumber: "1012345678",
+		AccountType:   "checking",
+		Balance:       decimal.NewFromFloat(500),
+		Status:        "active",
+	}
+	s.accountRepo.EXPECT().GetByID(s.testAccountID).Return(account, nil)
+	s.accountRepo.EXPECT().Update(gomock.Any()).Return(nil)
+	s.auditRepo.EXPECT().Create(gomock.Any()).Return(nil)
+
+	result, err := s.service.UpdateAccountStatus(s.testAccountID, &s.testUserID, models.AccountStatusInactive)
+	s.NoError(err)
+	s.NotNil(result)
+	s.Equal(models.AccountStatusInactive, result.Status)
+}
+
+func (s *AccountServiceSuite) TestUpdateAccountStatus_NotFound() {
+	s.accountRepo.EXPECT().GetByID(s.testAccountID).Return(nil, repositories.ErrAccountNotFound)
+
+	result, err := s.service.UpdateAccountStatus(s.testAccountID, &s.testUserID, models.AccountStatusActive)
+	s.Error(err)
+	s.Nil(result)
+	s.Equal(ErrAccountNotFound, err)
+}
+
+func (s *AccountServiceSuite) TestUpdateAccountStatus_InvalidStatus() {
+	account := &models.Account{
+		ID:            s.testAccountID,
+		UserID:        s.testUserID,
+		AccountNumber: "1012345678",
+		AccountType:   "checking",
+		Balance:       decimal.NewFromFloat(500),
+		Status:        "active",
+	}
+	s.accountRepo.EXPECT().GetByID(s.testAccountID).Return(account, nil)
+
+	result, err := s.service.UpdateAccountStatus(s.testAccountID, &s.testUserID, "invalid_status")
+	s.Error(err)
+	s.Nil(result)
+}
+
+func (s *AccountServiceSuite) TestUpdateAccountStatus_RepoUpdateError() {
+	account := &models.Account{
+		ID:            s.testAccountID,
+		UserID:        s.testUserID,
+		AccountNumber: "1012345678",
+		AccountType:   "checking",
+		Balance:       decimal.NewFromFloat(500),
+		Status:        "inactive",
+	}
+	s.accountRepo.EXPECT().GetByID(s.testAccountID).Return(account, nil)
+	s.accountRepo.EXPECT().Update(gomock.Any()).Return(fmt.Errorf("db error"))
+
+	result, err := s.service.UpdateAccountStatus(s.testAccountID, &s.testUserID, models.AccountStatusActive)
+	s.Error(err)
+	s.Nil(result)
+}
+
+// Test GetAccountByNumber
+func (s *AccountServiceSuite) TestGetAccountByNumber_Success() {
+	account := &models.Account{
+		ID:            s.testAccountID,
+		UserID:        s.testUserID,
+		AccountNumber: "1012345678",
+		AccountType:   "checking",
+		Balance:       decimal.NewFromFloat(500),
+		Status:        "active",
+	}
+	s.accountRepo.EXPECT().GetByAccountNumber("1012345678").Return(account, nil)
+
+	result, err := s.service.GetAccountByNumber("1012345678")
+	s.NoError(err)
+	s.Equal(account, result)
+}
+
+func (s *AccountServiceSuite) TestGetAccountByNumber_NotFound() {
+	s.accountRepo.EXPECT().GetByAccountNumber("9999999999").Return(nil, repositories.ErrAccountNotFound)
+
+	result, err := s.service.GetAccountByNumber("9999999999")
+	s.Error(err)
+	s.Nil(result)
+	s.Equal(ErrAccountNotFound, err)
+}
+
+// Test GetUserAccounts
+func (s *AccountServiceSuite) TestGetUserAccounts_Success() {
+	accounts := []models.Account{
+		{
+			ID:            s.testAccountID,
+			UserID:        s.testUserID,
+			AccountNumber: "1012345678",
+			AccountType:   "checking",
+			Balance:       decimal.NewFromFloat(500),
+			Status:        "active",
+		},
+	}
+	s.accountRepo.EXPECT().GetByUserID(s.testUserID).Return(accounts, nil)
+
+	result, err := s.service.GetUserAccounts(s.testUserID)
+	s.NoError(err)
+	s.Len(result, 1)
+	s.Equal("1012345678", result[0].AccountNumber)
+}
+
+func (s *AccountServiceSuite) TestGetUserAccounts_RepoError() {
+	s.accountRepo.EXPECT().GetByUserID(s.testUserID).Return(nil, fmt.Errorf("db error"))
+
+	result, err := s.service.GetUserAccounts(s.testUserID)
+	s.Error(err)
+	s.Nil(result)
+}
+
+// Test GetAllAccounts
+func (s *AccountServiceSuite) TestGetAllAccounts_Success() {
+	filters := models.AccountFilters{}
+	accounts := []models.Account{
+		{
+			ID:            s.testAccountID,
+			UserID:        s.testUserID,
+			AccountNumber: "1012345678",
+			AccountType:   "checking",
+			Balance:       decimal.NewFromFloat(500),
+			Status:        "active",
+		},
+	}
+	s.accountRepo.EXPECT().GetAllWithFilters(filters, 0, 20).Return(accounts, int64(1), nil)
+
+	result, total, err := s.service.GetAllAccounts(filters, 0, 20)
+	s.NoError(err)
+	s.Len(result, 1)
+	s.Equal(int64(1), total)
+}
+
+func (s *AccountServiceSuite) TestGetAllAccounts_RepoError() {
+	s.accountRepo.EXPECT().GetAllWithFilters(gomock.Any(), 0, 20).Return(nil, int64(0), fmt.Errorf("db error"))
+
+	result, total, err := s.service.GetAllAccounts(models.AccountFilters{}, 0, 20)
+	s.Error(err)
+	s.Nil(result)
+	s.Equal(int64(0), total)
+}
+
+// Test GetAccountTransactions
+func (s *AccountServiceSuite) TestGetAccountTransactions_Success() {
+	account := &models.Account{
+		ID:            s.testAccountID,
+		UserID:        s.testUserID,
+		AccountNumber: "1012345678",
+		AccountType:   "checking",
+		Balance:       decimal.NewFromFloat(500),
+		Status:        "active",
+	}
+	transactions := []models.Transaction{
+		{
+			ID:              uuid.New(),
+			AccountID:       s.testAccountID,
+			Amount:          decimal.NewFromFloat(50),
+			TransactionType: models.TransactionTypeCredit,
+			Status:          models.TransactionStatusCompleted,
+		},
+	}
+	s.accountRepo.EXPECT().GetByID(s.testAccountID).Return(account, nil)
+	s.transactionRepo.EXPECT().GetByAccountID(s.testAccountID, 0, 10).Return(transactions, int64(1), nil)
+
+	result, total, err := s.service.GetAccountTransactions(s.testAccountID, &s.testUserID, 0, 10)
+	s.NoError(err)
+	s.Len(result, 1)
+	s.Equal(int64(1), total)
+}
+
+func (s *AccountServiceSuite) TestGetAccountTransactions_Unauthorized() {
+	otherUserID := uuid.New()
+	account := &models.Account{
+		ID:            s.testAccountID,
+		UserID:        s.testUserID,
+		AccountNumber: "1012345678",
+		AccountType:   "checking",
+		Balance:       decimal.NewFromFloat(500),
+		Status:        "active",
+	}
+	s.accountRepo.EXPECT().GetByID(s.testAccountID).Return(account, nil)
+	s.userRepo.EXPECT().GetByID(otherUserID).Return(&models.User{ID: otherUserID, Role: "user"}, nil)
+
+	result, total, err := s.service.GetAccountTransactions(s.testAccountID, &otherUserID, 0, 10)
+	s.Error(err)
+	s.Nil(result)
+	s.Equal(int64(0), total)
+	s.Equal(ErrUnauthorized, err)
+}
+
+func (s *AccountServiceSuite) TestGetAccountTransactions_RepoError() {
+	account := &models.Account{
+		ID:            s.testAccountID,
+		UserID:        s.testUserID,
+		AccountNumber: "1012345678",
+		AccountType:   "checking",
+		Balance:       decimal.NewFromFloat(500),
+		Status:        "active",
+	}
+	s.accountRepo.EXPECT().GetByID(s.testAccountID).Return(account, nil)
+	s.transactionRepo.EXPECT().GetByAccountID(s.testAccountID, 0, 10).Return(nil, int64(0), fmt.Errorf("db error"))
+
+	result, total, err := s.service.GetAccountTransactions(s.testAccountID, &s.testUserID, 0, 10)
+	s.Error(err)
+	s.Nil(result)
+	s.Equal(int64(0), total)
+}
+
+// Test GetRecentTransactions
+func (s *AccountServiceSuite) TestGetRecentTransactions_Success() {
+	account := &models.Account{
+		ID:            s.testAccountID,
+		UserID:        s.testUserID,
+		AccountNumber: "1012345678",
+		AccountType:   "checking",
+		Balance:       decimal.NewFromFloat(500),
+		Status:        "active",
+	}
+	transactions := []models.Transaction{
+		{
+			ID:              uuid.New(),
+			AccountID:       s.testAccountID,
+			Amount:          decimal.NewFromFloat(50),
+			TransactionType: models.TransactionTypeCredit,
+			Status:          models.TransactionStatusCompleted,
+		},
+	}
+	s.accountRepo.EXPECT().GetByID(s.testAccountID).Return(account, nil)
+	s.transactionRepo.EXPECT().GetRecentByAccountID(s.testAccountID, 5).Return(transactions, nil)
+
+	result, err := s.service.GetRecentTransactions(s.testAccountID, &s.testUserID, 5)
+	s.NoError(err)
+	s.Len(result, 1)
+}
+
+func (s *AccountServiceSuite) TestGetRecentTransactions_RepoError() {
+	account := &models.Account{
+		ID:            s.testAccountID,
+		UserID:        s.testUserID,
+		AccountNumber: "1012345678",
+		AccountType:   "checking",
+		Balance:       decimal.NewFromFloat(500),
+		Status:        "active",
+	}
+	s.accountRepo.EXPECT().GetByID(s.testAccountID).Return(account, nil)
+	s.transactionRepo.EXPECT().GetRecentByAccountID(s.testAccountID, 5).Return(nil, fmt.Errorf("db error"))
+
+	result, err := s.service.GetRecentTransactions(s.testAccountID, &s.testUserID, 5)
+	s.Error(err)
+	s.Nil(result)
+}
+
+// Test GetUserTransfers
+func (s *AccountServiceSuite) TestGetUserTransfers_EmptyAccounts() {
+	s.accountRepo.EXPECT().GetByUserID(s.testUserID).Return([]models.Account{}, nil)
+
+	result, total, err := s.service.GetUserTransfers(s.testUserID, models.TransferFilters{}, 0, 10)
+	s.NoError(err)
+	s.Len(result, 0)
+	s.Equal(int64(0), total)
+}
+
+func (s *AccountServiceSuite) TestGetUserTransfers_Success() {
+	accounts := []models.Account{
+		{
+			ID:            s.testAccountID,
+			UserID:        s.testUserID,
+			AccountNumber: "1012345678",
+			AccountType:   "checking",
+			Balance:       decimal.NewFromFloat(500),
+			Status:        "active",
+		},
+	}
+	transfers := []models.Transfer{
+		{
+			ID:     uuid.New(),
+			Status: models.TransferStatusCompleted,
+		},
+	}
+	s.accountRepo.EXPECT().GetByUserID(s.testUserID).Return(accounts, nil)
+	s.transferRepo.EXPECT().FindByUserAccountsWithFilters([]uuid.UUID{s.testAccountID}, models.TransferFilters{}, 0, 10).Return(transfers, int64(1), nil)
+
+	result, total, err := s.service.GetUserTransfers(s.testUserID, models.TransferFilters{}, 0, 10)
+	s.NoError(err)
+	s.Len(result, 1)
+	s.Equal(int64(1), total)
+}
+
+func (s *AccountServiceSuite) TestGetUserTransfers_RepoError() {
+	s.accountRepo.EXPECT().GetByUserID(s.testUserID).Return(nil, fmt.Errorf("db error"))
+
+	result, total, err := s.service.GetUserTransfers(s.testUserID, models.TransferFilters{}, 0, 10)
+	s.Error(err)
+	s.Nil(result)
+	s.Equal(int64(0), total)
+}
+
+// Test CreateAccount repo failure
+func (s *AccountServiceSuite) TestCreateAccount_CreateWithTransactionFails() {
+	s.userRepo.EXPECT().GetByID(s.testUserID).Return(s.testUser, nil)
+	s.accountRepo.EXPECT().ExistsForUser(s.testUserID, "checking").Return(false, nil)
+	s.accountRepo.EXPECT().GenerateUniqueAccountNumber("checking").Return("1012345678", nil)
+	s.accountRepo.EXPECT().CreateWithTransaction(gomock.Any(), gomock.Any()).Return(fmt.Errorf("db error"))
+
+	account, err := s.service.CreateAccount(s.testUserID, "checking", decimal.Zero)
+	s.Error(err)
+	s.Nil(account)
+}
+
+// Test PerformTransaction repo errors
+func (s *AccountServiceSuite) TestPerformTransaction_UpdateBalanceError() {
+	account := &models.Account{
+		ID:            s.testAccountID,
+		UserID:        s.testUserID,
+		AccountNumber: "1012345678",
+		AccountType:   "checking",
+		Balance:       decimal.NewFromFloat(500),
+		Status:        "active",
+	}
+	s.accountRepo.EXPECT().GetByID(s.testAccountID).Return(account, nil)
+	s.accountRepo.EXPECT().UpdateBalance(s.testAccountID, decimal.NewFromFloat(50), "credit").Return(fmt.Errorf("db error"))
+
+	transaction, err := s.service.PerformTransaction(s.testAccountID, decimal.NewFromFloat(50), "credit", "Deposit", &s.testUserID)
+	s.Error(err)
+	s.Nil(transaction)
+}
+
+func (s *AccountServiceSuite) TestPerformTransaction_CreateTransactionError() {
+	account := &models.Account{
+		ID:            s.testAccountID,
+		UserID:        s.testUserID,
+		AccountNumber: "1012345678",
+		AccountType:   "checking",
+		Balance:       decimal.NewFromFloat(500),
+		Status:        "active",
+	}
+	s.accountRepo.EXPECT().GetByID(s.testAccountID).Return(account, nil)
+	s.accountRepo.EXPECT().UpdateBalance(s.testAccountID, decimal.NewFromFloat(50), "credit").Return(nil)
+	s.transactionRepo.EXPECT().Create(gomock.Any()).Return(fmt.Errorf("db error"))
+
+	transaction, err := s.service.PerformTransaction(s.testAccountID, decimal.NewFromFloat(50), "credit", "Deposit", &s.testUserID)
+	s.Error(err)
+	s.Nil(transaction)
 }

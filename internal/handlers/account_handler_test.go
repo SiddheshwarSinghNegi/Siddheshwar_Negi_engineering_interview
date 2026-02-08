@@ -5,17 +5,19 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/array/banking-api/internal/dto"
 	"github.com/array/banking-api/internal/models"
 	"github.com/array/banking-api/internal/services"
 	"github.com/array/banking-api/internal/services/service_mocks"
-	"github.com/go-playground/validator/v10"
+	"github.com/array/banking-api/internal/validation"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -41,7 +43,7 @@ func (s *AccountHandlerSuite) SetupTest() {
 	s.handler = NewAccountHandler(s.mockService, s.auditLogger, s.metricsCollector)
 
 	s.echo = echo.New()
-	s.echo.Validator = &CustomValidator{validator: validator.New()}
+	s.echo.Validator = validation.EchoValidator()
 
 	// Setup common test data
 	s.testUserID = uuid.New()
@@ -77,6 +79,71 @@ func (s *AccountHandlerSuite) createContextWithAuth(method, path string, body in
 	c.Set("user_role", userRole)
 
 	return c, rec
+}
+
+// TestAccountHandler_CreateAccount is a table-driven test matching the README "Writing Tests" pattern.
+func TestAccountHandler_CreateAccount(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockAccountService := service_mocks.NewMockAccountServiceInterface(ctrl)
+	mockAuditLogger := service_mocks.NewMockAuditLoggerInterface(ctrl)
+	mockMetrics := service_mocks.NewMockMetricsRecorderInterface(ctrl)
+	handler := NewAccountHandler(mockAccountService, mockAuditLogger, mockMetrics)
+
+	e := echo.New()
+	e.Validator = validation.EchoValidator()
+
+	tests := []struct {
+		name           string
+		requestBody    string
+		expectedStatus int
+		expectedCode   string
+	}{
+		{
+			name:           "successful account creation",
+			requestBody:    `{"accountType":"checking"}`,
+			expectedStatus: 201,
+		},
+		{
+			name:           "invalid account type",
+			requestBody:    `{"accountType":"invalid"}`,
+			expectedStatus: 400,
+			expectedCode:   "VALIDATION_001",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/accounts", strings.NewReader(tt.requestBody))
+			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			c.Set("user_id", uuid.New())
+			c.Set("user_role", "user")
+
+			if tt.expectedStatus == 201 {
+				mockAccountService.EXPECT().
+					CreateAccount(gomock.Any(), "checking", gomock.Any()).
+					Return(&models.Account{
+						ID:            uuid.New(),
+						AccountNumber: "1012345678",
+						AccountType:   "checking",
+						Status:        "active",
+					}, nil)
+			}
+
+			err := handler.CreateAccount(c)
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedStatus, rec.Code)
+
+			if tt.expectedCode != "" {
+				var errResp ErrorResponse
+				require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &errResp))
+				require.Equal(t, tt.expectedCode, errResp.Error.Code)
+			}
+		})
+	}
 }
 
 // Test CreateAccount functionality
@@ -440,7 +507,7 @@ func (s *AccountHandlerSuite) TestTransfer_SameAccount() {
 			Message string `json:"message"`
 		} `json:"error"`
 	}
-	json.Unmarshal(rec.Body.Bytes(), &response)
+	_ = json.Unmarshal(rec.Body.Bytes(), &response)
 	s.Equal("TRANSFER_001", response.Error.Code)
 	s.Contains(response.Error.Message, "same account")
 }
@@ -645,7 +712,7 @@ func (s *AccountHandlerSuite) TestTransfer_DuplicateIdempotencyKey_PendingTransf
 			Message string `json:"message"`
 		} `json:"error"`
 	}
-	json.Unmarshal(rec.Body.Bytes(), &response)
+	_ = json.Unmarshal(rec.Body.Bytes(), &response)
 	s.Equal("TRANSFER_002", response.Error.Code)
 	s.Contains(response.Error.Message, "still processing")
 }
@@ -695,7 +762,7 @@ func (s *AccountHandlerSuite) TestTransfer_DuplicateIdempotencyKey_FailedTransfe
 			Message string `json:"message"`
 		} `json:"error"`
 	}
-	json.Unmarshal(rec.Body.Bytes(), &response)
+	_ = json.Unmarshal(rec.Body.Bytes(), &response)
 	s.Equal("TRANSFER_003", response.Error.Code)
 	s.Contains(response.Error.Message, "previously failed")
 }

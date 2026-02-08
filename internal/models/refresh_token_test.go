@@ -29,7 +29,8 @@ func TestRefreshToken_IsExpired(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := &tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.expired, tt.token.IsExpired())
 		})
@@ -60,7 +61,8 @@ func TestRefreshToken_IsRevoked(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := &tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.revoked, tt.token.IsRevoked())
 		})
@@ -109,7 +111,8 @@ func TestRefreshToken_IsValid(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i := range tests {
+		tt := &tests[i]
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.valid, tt.token.IsValid())
 		})

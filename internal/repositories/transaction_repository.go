@@ -247,7 +247,8 @@ func (r *transactionRepository) GetWithFilters(filters models.TransactionFilters
 
 // UpdateWithOptimisticLock updates a transaction with optimistic locking
 func (r *transactionRepository) UpdateWithOptimisticLock(transaction *models.Transaction, expectedVersion int) error {
-	result := r.db.Model(&models.Transaction{ID: transaction.ID}).
+	// Use transaction as model so BeforeUpdate callback receives the full struct (including AccountID)
+	result := r.db.Model(transaction).
 		Where("version = ?", expectedVersion).
 		Updates(transaction)
 

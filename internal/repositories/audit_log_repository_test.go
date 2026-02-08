@@ -286,3 +286,121 @@ func (s *AuditLogRepositorySuite) TestAuditLogRepository_GetByTimeRange() {
 	s.Len(logs, 0)
 	s.Equal(int64(0), total)
 }
+
+func (s *AuditLogRepositorySuite) TestAuditLogRepository_GetByID() {
+	userID := uuid.New()
+	log := &models.AuditLog{
+		UserID:     &userID,
+		Action:     models.AuditActionLogin,
+		Resource:   "user",
+		ResourceID: userID.String(),
+		IPAddress:  "127.0.0.1",
+		UserAgent:  "test",
+	}
+	s.NoError(s.repo.Create(log))
+
+	found, err := s.repo.GetByID(log.ID)
+	s.NoError(err)
+	s.Equal(log.ID, found.ID)
+	s.Equal(log.Action, found.Action)
+
+	_, err = s.repo.GetByID(uuid.New())
+	s.Error(err)
+}
+
+func (s *AuditLogRepositorySuite) TestAuditLogRepository_GetByResource_Simple() {
+	userID := uuid.New()
+	resourceID := uuid.New().String()
+	log := &models.AuditLog{
+		UserID:     &userID,
+		Action:     models.AuditActionUpdate,
+		Resource:   "account",
+		ResourceID: resourceID,
+		IPAddress:  "127.0.0.1",
+		UserAgent:  "test",
+	}
+	s.NoError(s.repo.Create(log))
+
+	logs, total, err := s.repo.GetByResource("account", resourceID, 0, 10)
+	s.NoError(err)
+	s.GreaterOrEqual(len(logs), 1)
+	s.GreaterOrEqual(total, int64(1))
+	s.Equal("account", logs[0].Resource)
+	s.Equal(resourceID, logs[0].ResourceID)
+}
+
+func (s *AuditLogRepositorySuite) TestAuditLogRepository_GetByIPAddress() {
+	userID := uuid.New()
+	log := &models.AuditLog{
+		UserID:     &userID,
+		Action:     models.AuditActionLogin,
+		Resource:   "user",
+		ResourceID: userID.String(),
+		IPAddress:  "10.0.0.99",
+		UserAgent:  "test",
+	}
+	s.NoError(s.repo.Create(log))
+
+	logs, total, err := s.repo.GetByIPAddress("10.0.0.99", 0, 10)
+	s.NoError(err)
+	s.GreaterOrEqual(len(logs), 1)
+	s.GreaterOrEqual(total, int64(1))
+	s.Equal("10.0.0.99", logs[0].IPAddress)
+}
+
+func (s *AuditLogRepositorySuite) TestAuditLogRepository_GetCustomerActivity() {
+	userID := uuid.New()
+	log := &models.AuditLog{
+		UserID:     &userID,
+		Action:     models.AuditActionLogin,
+		Resource:   "user",
+		ResourceID: userID.String(),
+		IPAddress:  "127.0.0.1",
+		UserAgent:  "test",
+	}
+	s.NoError(s.repo.Create(log))
+
+	start := time.Now().Add(-24 * time.Hour)
+	end := time.Now().Add(24 * time.Hour)
+	logs, total, err := s.repo.GetCustomerActivity(userID, &start, &end, 0, 10)
+	s.NoError(err)
+	s.GreaterOrEqual(len(logs), 1)
+	s.GreaterOrEqual(total, int64(1))
+}
+
+func (s *AuditLogRepositorySuite) TestAuditLogRepository_GetFailedLoginAttempts() {
+	email := "failedlogin@example.com"
+	// Create failed login logs (action is stored as string; check model for failed login action)
+	log := &models.AuditLog{
+		UserID:     nil,
+		Action:     models.AuditActionFailedLogin,
+		Resource:   "auth",
+		ResourceID: "",
+		IPAddress:  "127.0.0.1",
+		UserAgent:  "test",
+		Metadata:   models.JSONBMap{"email": email},
+	}
+	s.NoError(s.repo.Create(log))
+
+	since := time.Now().Add(-1 * time.Hour)
+	count, err := s.repo.GetFailedLoginAttempts(email, since)
+	s.NoError(err)
+	s.GreaterOrEqual(count, int64(1))
+}
+
+func (s *AuditLogRepositorySuite) TestAuditLogRepository_DeleteOlderThan() {
+	userID := uuid.New()
+	log := &models.AuditLog{
+		UserID:     &userID,
+		Action:     models.AuditActionLogin,
+		Resource:   "user",
+		ResourceID: userID.String(),
+		IPAddress:  "127.0.0.1",
+		UserAgent:  "test",
+	}
+	s.NoError(s.repo.Create(log))
+
+	deleted, err := s.repo.DeleteOlderThan(0)
+	s.NoError(err)
+	s.GreaterOrEqual(deleted, int64(0))
+}

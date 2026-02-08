@@ -28,29 +28,21 @@ import (
 	"github.com/array/banking-api/internal/repositories"
 	"github.com/array/banking-api/internal/services"
 	"github.com/array/banking-api/internal/validation"
-	"github.com/go-playground/validator/v10"
+	"github.com/array/banking-api/internal/worker"
+	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 )
 
 var cfg *config.Config
 
-// CustomValidator implements echo.Validator interface using our validation package
-type CustomValidator struct {
-	validator *validator.Validate
-}
-
-// Validate validates the struct using go-playground validator
-// Returns validation errors that will be caught by the error handling middleware
-func (cv *CustomValidator) Validate(i interface{}) error {
-	// Return raw validation error - the middleware will format it properly with trace IDs
-	if err := cv.validator.Struct(i); err != nil {
-		return err
-	}
-	return nil
-}
-
 func main() {
+	// Load env file based on APP_ENV: .env.example for dev, .env.production.example for production
+	if os.Getenv("APP_ENV") == "production" {
+		_ = godotenv.Load(".env.production.example")
+	} else {
+		_ = godotenv.Load(".env.example")
+	}
 	cfg = config.Load()
 
 	// Initialize database
@@ -124,7 +116,8 @@ func main() {
 	go processingService.StartProcessing(processingCtx)
 
 	// --- NorthWind integration setup ---
-	nwClient := northwind.NewClient(cfg.NorthWind.BaseURL, cfg.NorthWind.APIKey)
+	nwClient := northwind.NewClient(cfg.NorthWind.BaseURL, cfg.NorthWind.APIKey,
+		northwind.WithRetry(cfg.NorthWind.MaxRetries, cfg.NorthWind.RetryInitialBackoffMs))
 
 	// NorthWind repositories
 	nwExternalAccountRepo := repositories.NewNorthwindExternalAccountRepository(db)
@@ -143,6 +136,7 @@ func main() {
 		regulatorNotifRepo,
 		regulatorAttemptRepo,
 		slog.Default(),
+		nil, // use default HTTP client
 	)
 
 	nwPollingService := services.NewNorthwindPollingService(
@@ -153,15 +147,12 @@ func main() {
 		slog.Default(),
 	)
 
-	// Start NorthWind polling worker
-	pollingCtx, cancelPolling := context.WithCancel(context.Background())
-	defer cancelPolling()
-	go nwPollingService.Start(pollingCtx)
-
-	// Start regulator retry worker
-	regCtx, cancelReg := context.WithCancel(context.Background())
-	defer cancelReg()
-	go regulatorService.StartRetryLoop(regCtx)
+	// Unified worker: NorthWind transfer polling + regulator retries in one loop
+	workerInterval := 5 * time.Second
+	nwWorker := worker.NewScheduler(nwPollingService, regulatorService, workerInterval, slog.Default())
+	workerCtx, cancelWorker := context.WithCancel(context.Background())
+	defer cancelWorker()
+	go nwWorker.Start(workerCtx)
 
 	e := configureEcho()
 
@@ -200,8 +191,7 @@ func main() {
 	<-quit
 
 	// Graceful shutdown: cancel background workers then shut down HTTP
-	cancelPolling()
-	cancelReg()
+	cancelWorker()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -217,8 +207,7 @@ func configureEcho() *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
 	// Use our custom validator with business rule validations
-	customValidator := validation.GetValidator()
-	e.Validator = &CustomValidator{validator: customValidator.GetValidate()}
+	e.Validator = validation.EchoValidator()
 	e.HTTPErrorHandler = middleware.CustomHTTPErrorHandler
 
 	e.Use(middleware.RequestID())

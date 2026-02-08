@@ -12,7 +12,7 @@ import (
 	"github.com/array/banking-api/internal/models"
 	"github.com/array/banking-api/internal/services"
 	"github.com/array/banking-api/internal/services/service_mocks"
-	"github.com/go-playground/validator/v10"
+	"github.com/array/banking-api/internal/validation"
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -36,7 +36,7 @@ func (s *AuthHandlerSuite) SetupTest() {
 	s.authService = service_mocks.NewMockAuthServiceInterface(s.ctrl)
 	s.handler = NewAuthHandler(s.authService)
 	s.e = echo.New()
-	s.e.Validator = &CustomValidator{validator: validator.New()}
+	s.e.Validator = validation.EchoValidator()
 }
 
 func (s *AuthHandlerSuite) TearDownTest() {
@@ -170,7 +170,7 @@ func (s *AuthHandlerSuite) TestRegister() {
 		c := s.e.NewContext(req, rec)
 
 		// Set up validator
-		s.e.Validator = &CustomValidator{validator: validator.New()}
+		s.e.Validator = validation.EchoValidator()
 
 		err := s.handler.Register(c)
 		// Validation error should be returned

@@ -24,7 +24,7 @@ type AccountRepositoryInterface interface {
 	SoftDeleteByUserID(userID uuid.UUID) error
 	CheckAccountNumberExists(accountNumber string) (bool, error)
 	GenerateUniqueAccountNumber(accountType string) (string, error)
-	CreateWithTransaction(account *models.Account, transactions []models.Transaction) error
+	CreateWithTransaction(account *models.Account, transactions []*models.Transaction) error
 	UpdateBalance(accountID uuid.UUID, amount decimal.Decimal, transactionType string) error
 	GetAccountsByStatus(status string, offset, limit int) ([]models.Account, error)
 	GetTotalBalanceByUserID(userID uuid.UUID) (decimal.Decimal, error)
